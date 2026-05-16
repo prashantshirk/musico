@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "NovaTune"
+version = "1.0.0"
+id = "artifacts/novatune"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22020
+
+[services.development]
+run = "pnpm --filter @workspace/novatune run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/novatune", "run", "build" ]
+publicDir = "artifacts/novatune/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22020"
+BASE_PATH = "/"
