@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/navidrome/:path*",
+      "destination": "https://music.prashantshirke.me/:path*"
+    }
+  ]
+}
