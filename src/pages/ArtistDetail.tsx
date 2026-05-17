@@ -31,7 +31,35 @@ export default function ArtistDetail() {
     enabled: !!id,
   });
 
-  if (isLoading) return <div className="min-h-screen flex justify-center items-center"><div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
+  if (isLoading) return (
+    <div className="min-h-screen bg-background pb-32">
+      <div className="relative h-64 md:h-80 w-full bg-muted overflow-hidden animate-pulse">
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
+        <div className="absolute bottom-6 left-6 md:left-12">
+          <div className="h-12 w-64 bg-white/10 rounded mb-2" />
+          <div className="h-4 w-24 bg-white/10 rounded" />
+        </div>
+      </div>
+      <main className="p-4 md:p-8 max-w-screen-xl mx-auto flex flex-col gap-12">
+        <section>
+          <div className="h-8 w-32 bg-white/5 rounded mb-4 animate-pulse" />
+          <div className="flex flex-col gap-2">
+            {[1, 2, 3, 4, 5].map(i => (
+              <div key={i} className="h-16 w-full bg-white/5 rounded-md animate-pulse" />
+            ))}
+          </div>
+        </section>
+        <section>
+          <div className="h-8 w-32 bg-white/5 rounded mb-4 animate-pulse" />
+          <div className="flex gap-4">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="w-40 h-56 bg-white/5 rounded-lg animate-pulse shrink-0" />
+            ))}
+          </div>
+        </section>
+      </main>
+    </div>
+  );
   if (!artist) return null;
 
   return (

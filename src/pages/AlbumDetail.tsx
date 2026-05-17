@@ -38,7 +38,32 @@ export default function AlbumDetail() {
     }
   };
 
-  if (isLoading) return <div className="min-h-screen bg-background p-8 flex justify-center"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"/></div>;
+  if (isLoading) return (
+    <div className="min-h-screen bg-background pb-32">
+      <div className="relative pt-safe bg-background/50">
+        <div className="flex flex-col md:flex-row items-center md:items-end gap-6 p-6 md:p-12 pt-20">
+          <div className="w-56 h-56 md:w-64 md:h-64 rounded-md bg-white/5 animate-pulse" />
+          <div className="flex flex-col items-center md:items-start text-center md:text-left w-full max-w-md">
+            <div className="h-4 w-16 bg-white/5 rounded mb-4 animate-pulse" />
+            <div className="h-10 w-3/4 bg-white/5 rounded mb-4 animate-pulse" />
+            <div className="h-6 w-1/2 bg-white/5 rounded mb-4 animate-pulse" />
+            <div className="h-4 w-1/3 bg-white/5 rounded animate-pulse" />
+          </div>
+        </div>
+      </div>
+      <main className="p-4 md:p-8 max-w-screen-xl mx-auto">
+        <div className="flex items-center gap-4 mb-8">
+          <div className="w-14 h-14 bg-white/5 rounded-full animate-pulse" />
+          <div className="w-10 h-10 bg-white/5 rounded-full animate-pulse" />
+        </div>
+        <div className="flex flex-col gap-2">
+          {[1, 2, 3, 4, 5, 6].map(i => (
+            <div key={i} className="h-16 w-full bg-white/5 rounded-md animate-pulse" />
+          ))}
+        </div>
+      </main>
+    </div>
+  );
   if (!album) return null;
 
   return (

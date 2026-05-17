@@ -8,8 +8,9 @@ import { getDominantColor } from '../utils/color';
 import { ProgressBar } from '../components/ProgressBar';
 import { VolumeSlider } from '../components/VolumeSlider';
 import { LyricsPanel } from '../components/LyricsPanel';
+import { SongInfoModal } from '../components/SongInfoModal';
 import { 
-  ChevronDown, MoreVertical, Play, Pause, SkipBack, SkipForward, 
+  ChevronDown, Info, Play, Pause, SkipBack, SkipForward, 
   Repeat, Repeat1, Shuffle, Star, ListMusic, MessageSquare 
 } from 'lucide-react';
 import { star, unstar } from '../api/annotation';
@@ -20,6 +21,7 @@ export default function NowPlaying() {
   const { togglePlay, next, previous, seek, setVolume, toggleMute } = usePlayer();
   const [dominantColor, setDominantColor] = useState<string>('rgb(15,15,15)');
   const [showLyrics, setShowLyrics] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
   const [isStarred, setIsStarred] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
@@ -115,8 +117,11 @@ export default function NowPlaying() {
           <div className="text-center text-xs font-semibold tracking-widest text-white/70 uppercase">
             {currentSong.album}
           </div>
-          <button className="p-2 -mr-2 text-white/80 hover:text-white transition-colors">
-            <MoreVertical size={24} />
+          <button 
+            onClick={() => setShowInfo(true)}
+            className="p-2 -mr-2 text-white/80 hover:text-white transition-colors"
+          >
+            <Info size={24} />
           </button>
         </header>
 
@@ -241,6 +246,7 @@ export default function NowPlaying() {
       </div>
 
       {showLyrics && <LyricsPanel onClose={() => setShowLyrics(false)} />}
+      {showInfo && <SongInfoModal onClose={() => setShowInfo(false)} />}
     </div>
   );
 }
