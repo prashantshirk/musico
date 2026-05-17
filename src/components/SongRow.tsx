@@ -1,5 +1,5 @@
 import { Song } from '../types';
-import { coverArtUrl } from '../api/client';
+import { CoverArt } from './CoverArt';
 import { formatTime } from '../utils/time';
 import { Star, MoreVertical } from 'lucide-react';
 import { usePlayerStore } from '../store/playerStore';
@@ -50,13 +50,14 @@ export function SongRow({ song, index, onPlay, showCover = true }: SongRowProps)
       )}
 
       {showCover && (
-        <img 
-          src={coverArtUrl(song.albumId || song.id, 80)} 
-          alt={song.album} 
-          loading="lazy"
-          decoding="async"
-          className="w-12 h-12 rounded object-cover bg-muted flex-shrink-0"
-        />
+        <div className="w-12 h-12 rounded overflow-hidden bg-muted flex-shrink-0">
+          <CoverArt
+            id={song.albumId || song.id}
+            alt={song.album || ''}
+            size={80}
+            className="w-full h-full"
+          />
+        </div>
       )}
 
       <div className="flex-1 min-w-0">
@@ -96,13 +97,14 @@ export function SongRow({ song, index, onPlay, showCover = true }: SongRowProps)
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start gap-4">
-              <img 
-                src={coverArtUrl(song.albumId || song.id, 200)} 
-                alt={song.album} 
-                loading="lazy"
-                decoding="async"
-                className="w-24 h-24 rounded-md object-cover shadow-md"
-              />
+              <div className="w-24 h-24 rounded-md overflow-hidden shadow-md flex-shrink-0">
+                <CoverArt
+                  id={song.albumId || song.id}
+                  alt={song.album || ''}
+                  size={200}
+                  className="w-full h-full"
+                />
+              </div>
               <div className="flex-1 min-w-0">
                 <h3 className="font-syne font-bold text-xl text-foreground mb-1">{song.title}</h3>
                 <p className="text-primary font-medium text-sm">{song.artist}</p>

@@ -29,16 +29,44 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // Don't precache everything — let runtime caching handle API/images
+        globPatterns: ['**/*.{js,css,html,ico,svg,woff2}'],
         runtimeCaching: [
+          // ── Cover Art: CacheFirst ──────────────────────────────────────────
+          // Once an image is cached, serve it instantly without touching network.
+          // 500 images max, expire after 30 days. Mobile-friendly.
           {
             urlPattern: /\/rest\/getCoverArt/,
-            handler: 'StaleWhileRevalidate',
-            options: { cacheName: 'cover-art', expiration: { maxEntries: 500 } },
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'cover-art-v1',
+              expiration: {
+                maxEntries: 500,
+                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+              },
+              cacheableResponse: { statuses: [0, 200] },
+            },
           },
+          // ── API Metadata: NetworkFirst with 4s timeout ─────────────────────
+          // Try network first; fall back to cache if offline or slow.
           {
-            urlPattern: /\/rest\/(getAlbumList|getArtists|getPlaylists)/,
+            urlPattern: /\/rest\/(getAlbumList|getArtists|getArtist|getAlbum|getPlaylists|getPlaylist|getStarred|getGenres|getSongsByGenre|getRandomSongs|getSong|search3)/,
             handler: 'NetworkFirst',
-            options: { cacheName: 'api-cache', networkTimeoutSeconds: 5 },
+            options: {
+              cacheName: 'api-metadata-v1',
+              networkTimeoutSeconds: 4,
+              expiration: {
+                maxEntries: 200,
+                maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days
+              },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          // ── Audio Streams: NetworkOnly ─────────────────────────────────────
+          // Range requests for seeking don't work with SW caching — skip them.
+          {
+            urlPattern: /\/rest\/stream/,
+            handler: 'NetworkOnly',
           },
         ],
       },

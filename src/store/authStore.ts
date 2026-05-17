@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { clearAuthCache } from '../utils/auth';
 
 interface AuthState {
   username: string | null;
@@ -18,10 +19,14 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       isLoggedIn: false,
       login: (username, password, token) => set({ username, password, token, isLoggedIn: true }),
-      logout: () => set({ username: null, password: null, token: null, isLoggedIn: false }),
+      logout: () => {
+        clearAuthCache();
+        set({ username: null, password: null, token: null, isLoggedIn: false });
+      },
     }),
     {
       name: 'novatune-auth',
     }
   )
 );
+

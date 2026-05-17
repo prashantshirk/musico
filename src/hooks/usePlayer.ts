@@ -26,34 +26,29 @@ function startProgressTick(howl: Howl) {
 function schedulePreload() {
   if (preloadTimeout) { clearTimeout(preloadTimeout); preloadTimeout = null; }
 
-  const checkAndPreload = () => {
+  // Preload the next song shortly after the current one starts playing.
+  // This gives the network time to buffer the next track in the background
+  // so track transitions are instant (gapless).
+  preloadTimeout = setTimeout(() => {
     const state = getStore();
-    const { duration, progress, queue, queueIndex, repeat } = state;
+    const { queue, queueIndex, repeat } = state;
     if (!currentHowl || !currentHowl.playing()) return;
 
-    const remaining = duration - progress;
-
-    if (remaining <= 30 && remaining > 0 && duration > 0) {
-      let ni = queueIndex + 1;
-      if (ni >= queue.length && repeat === 'all') ni = 0;
-      if (ni < queue.length) {
-        const nextSong = queue[ni];
-        if (preloaderHowl) { preloaderHowl.unload(); preloaderHowl = null; }
-        preloaderHowl = new Howl({
-          src: [streamUrl(nextSong.id)],
-          html5: true,
-          volume: 0,
-          preload: true,
-        });
-      }
-    } else if (remaining > 30) {
-      const msUntilPreload = (remaining - 30) * 1000;
-      preloadTimeout = setTimeout(checkAndPreload, msUntilPreload);
+    let ni = queueIndex + 1;
+    if (ni >= queue.length && repeat === 'all') ni = 0;
+    if (ni < queue.length) {
+      const nextSong = queue[ni];
+      if (preloaderHowl) { preloaderHowl.unload(); preloaderHowl = null; }
+      preloaderHowl = new Howl({
+        src: [streamUrl(nextSong.id)],
+        html5: true,
+        volume: 0,
+        preload: true,
+      });
     }
-  };
-
-  checkAndPreload();
+  }, 3000); // Start preloading 3 seconds into current track
 }
+
 
 function handleSongEnd() {
   const { repeat, queue, queueIndex } = getStore();

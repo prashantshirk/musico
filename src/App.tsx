@@ -27,9 +27,14 @@ const queryClient = new QueryClient({
     queries: {
       retry: 1,
       refetchOnWindowFocus: false,
+      // Keep data fresh for 10 minutes — navigating back to Home is instant
+      staleTime: 10 * 60 * 1000,
+      // Keep unused data in memory for 30 minutes
+      gcTime: 30 * 60 * 1000,
     },
   },
 });
+
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   const isLoggedIn = useAuthStore(state => state.isLoggedIn);

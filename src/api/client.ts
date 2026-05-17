@@ -1,7 +1,11 @@
 import { useAuthStore } from '../store/authStore';
 import { generateAuth, buildParams } from '../utils/auth';
+import { getApiCache, setApiCache } from '../utils/storage';
 
 const BASE = '/api/navidrome';
+
+// Endpoints that should never be cached (real-time or large binary)
+const NO_CACHE_ENDPOINTS = new Set(['stream.view', 'scrobble.view', 'star.view', 'unstar.view']);
 
 export async function subsonicGet<T>(endpoint: string, params: Record<string, string | number | boolean> = {}): Promise<T> {
   const { username, password } = useAuthStore.getState();
@@ -9,10 +13,22 @@ export async function subsonicGet<T>(endpoint: string, params: Record<string, st
 
   const auth = generateAuth(username, password);
   const urlParams = buildParams(auth, params);
+
+  const shouldCache = !NO_CACHE_ENDPOINTS.has(endpoint);
+  // Build a stable cache key from endpoint + params (excluding auth which changes per session)
+  const cacheKey = shouldCache
+    ? `api:${endpoint}:${new URLSearchParams(Object.entries(params).map(([k, v]) => [k, String(v)])).toString()}`
+    : null;
+
   let res: Response;
   try {
     res = await fetch(`${BASE}/rest/${endpoint}?${urlParams}`);
   } catch (e) {
+    // Network failed — try IDB fallback
+    if (cacheKey) {
+      const cached = await getApiCache<T>(cacheKey);
+      if (cached) return cached;
+    }
     throw new Error('Cannot reach server — check your network connection');
   }
 
@@ -20,16 +36,17 @@ export async function subsonicGet<T>(endpoint: string, params: Record<string, st
 
   const data = await res.json();
   const response = data['subsonic-response'];
-  
-  // Debug logging for troubleshooting
-  if (import.meta.env.DEV) {
-    console.log(`[API ${endpoint}]`, JSON.stringify(response));
-  }
 
   if (!response) throw new Error('Unexpected response from server');
   if (response.status !== 'ok') {
     throw new Error(response.error?.message || 'API error');
   }
+
+  // Persist successful response to IDB for offline / future fast-start
+  if (cacheKey) {
+    setApiCache(cacheKey, response); // fire-and-forget
+  }
+
   return response;
 }
 
