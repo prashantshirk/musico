@@ -2,7 +2,7 @@ import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuthStore } from "./store/authStore";
 import { usePlayerStore } from "./store/playerStore";
 import { useAutoQueue } from "./hooks/useAutoQueue";
@@ -56,18 +56,30 @@ function AppShell() {
   const progress = usePlayerStore(state => state.progress);
   const duration = usePlayerStore(state => state.duration);
   const [location, setLocation] = useLocation();
+  const [hasHydrated, setHasHydrated] = useState(() => useAuthStore.persist.hasHydrated());
+
+  useEffect(() => {
+    const unsub = useAuthStore.persist.onFinishHydration(() => setHasHydrated(true));
+    setHasHydrated(useAuthStore.persist.hasHydrated());
+    return unsub;
+  }, []);
 
   // Root redirect
   useEffect(() => {
+    if (!hasHydrated) return;
     if (location === '/') {
       setLocation(isLoggedIn ? '/home' : '/login');
     }
-  }, [location, isLoggedIn, setLocation]);
+  }, [location, isLoggedIn, setLocation, hasHydrated]);
 
   // Global hooks
   useAutoQueue();
   useScrobble(currentSong?.id, progress, duration);
   useMediaSession();
+
+  if (!hasHydrated) {
+    return <div className="min-h-screen bg-background" />;
+  }
 
   const isNowPlaying = location === '/now-playing';
   const showChrome = isLoggedIn && !isNowPlaying;
