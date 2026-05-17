@@ -164,6 +164,8 @@ export default function NowPlaying() {
           {/* Main Controls */}
           <div className="flex items-center justify-between mb-8">
             <button 
+              onTouchStart={(e) => e.stopPropagation()}
+              onTouchEnd={(e) => e.stopPropagation()}
               onClick={toggleShuffle}
               className={`p-2 transition-colors ${shuffle ? 'text-primary' : 'text-white/60 hover:text-white'}`}
             >
@@ -172,6 +174,8 @@ export default function NowPlaying() {
             
             <div className="flex items-center justify-center gap-6 md:gap-8">
               <button 
+                onTouchStart={(e) => e.stopPropagation()}
+                onTouchEnd={(e) => e.stopPropagation()}
                 onClick={previous}
                 className="p-2 text-white/90 hover:text-white hover:scale-110 transition-all"
               >
@@ -179,6 +183,8 @@ export default function NowPlaying() {
               </button>
               
               <button 
+                onTouchStart={(e) => e.stopPropagation()}
+                onTouchEnd={(e) => e.stopPropagation()}
                 onClick={togglePlay}
                 className="w-16 h-16 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 transition-transform shadow-lg"
               >
@@ -190,6 +196,8 @@ export default function NowPlaying() {
               </button>
               
               <button 
+                onTouchStart={(e) => e.stopPropagation()}
+                onTouchEnd={(e) => e.stopPropagation()}
                 onClick={next}
                 className="p-2 text-white/90 hover:text-white hover:scale-110 transition-all"
               >
@@ -198,6 +206,8 @@ export default function NowPlaying() {
             </div>
 
             <button 
+              onTouchStart={(e) => e.stopPropagation()}
+              onTouchEnd={(e) => e.stopPropagation()}
               onClick={cycleRepeat}
               className={`p-2 transition-colors ${repeat !== 'none' ? 'text-primary' : 'text-white/60 hover:text-white'}`}
             >
@@ -210,13 +220,17 @@ export default function NowPlaying() {
             <VolumeSlider volume={isMuted ? 0 : volume} onVolumeChange={setVolume} />
             <div className="flex items-center gap-4 ml-6 shrink-0">
               <button 
-                onClick={(e) => { e.stopPropagation(); setShowLyrics(true); }}
+                onTouchStart={(e) => e.stopPropagation()}
+                onTouchEnd={(e) => e.stopPropagation()}
+                onClick={() => setShowLyrics(true)}
                 className="p-2 text-white/70 hover:text-white transition-colors"
               >
                 <MessageSquare size={20} />
               </button>
               <button 
-                onClick={(e) => { e.stopPropagation(); setLocation('/queue'); }}
+                onTouchStart={(e) => e.stopPropagation()}
+                onTouchEnd={(e) => e.stopPropagation()}
+                onClick={() => setLocation('/queue')}
                 className="p-2 text-white/70 hover:text-white transition-colors"
               >
                 <ListMusic size={20} />
