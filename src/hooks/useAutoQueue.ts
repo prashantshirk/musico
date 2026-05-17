@@ -9,7 +9,7 @@ export function useAutoQueue() {
     const songsRemaining = queue.length - queueIndex - 1;
 
     if (songsRemaining < 2 && currentSong) {
-      getSimilarSongs(currentSong.id, 5).then(similarSongs => {
+      getSimilarSongs(currentSong.artistId || currentSong.id, 5).then(similarSongs => {
         const currentIds = new Set(usePlayerStore.getState().queue.map(s => s.id));
         const newSongs = similarSongs.filter((s: any) => !currentIds.has(s.id));
 

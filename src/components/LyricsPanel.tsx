@@ -14,7 +14,7 @@ export function LyricsPanel({ onClose }: LyricsPanelProps) {
   
   const { data: syncedLyrics, isLoading: isLoadingSynced } = useQuery({
     queryKey: ['lyrics', 'synced', currentSong?.id],
-    queryFn: () => currentSong ? getSyncedLyrics(currentSong.id) : Promise.resolve([]),
+    queryFn: () => currentSong ? getSyncedLyrics(currentSong.artist, currentSong.title, currentSong.duration) : Promise.resolve([]),
     enabled: !!currentSong,
   });
 
@@ -27,7 +27,7 @@ export function LyricsPanel({ onClose }: LyricsPanelProps) {
   const isLoading = isLoadingSynced || isLoadingUnsynced;
 
   let activeIndex = -1;
-  const lines = syncedLyrics?.[0]?.line || [];
+  const lines = syncedLyrics || [];
   
   if (lines.length > 0) {
     const msProgress = progress * 1000;
@@ -50,7 +50,12 @@ export function LyricsPanel({ onClose }: LyricsPanelProps) {
   }, [activeIndex]);
 
   return (
-    <div className="absolute inset-0 bg-background/95 backdrop-blur-xl z-50 flex flex-col pt-12 pb-8 px-6 animate-in slide-in-from-bottom-full duration-300">
+    <div 
+      className="absolute inset-0 bg-background/95 backdrop-blur-xl z-50 flex flex-col pt-12 pb-8 px-6 animate-in slide-in-from-bottom-full duration-300"
+      onTouchStart={(e) => e.stopPropagation()}
+      onTouchMove={(e) => e.stopPropagation()}
+      onTouchEnd={(e) => e.stopPropagation()}
+    >
       <button 
         onClick={onClose}
         className="absolute top-4 right-4 p-2 text-foreground/60 hover:text-foreground bg-white/5 rounded-full"
