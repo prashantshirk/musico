@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { Howl, Howler } from 'howler';
 import { usePlayerStore } from '../store/playerStore';
-import { streamUrl } from '../api/client';
+import { streamUrl, coverArtUrl } from '../api/client';
 import { scrobble } from '../api/scrobble';
 import type { Song } from '../types';
 
@@ -107,6 +107,67 @@ function handleSongEnd() {
   }
 }
 
+function playNext() {
+  const { queue, queueIndex, repeat } = getStore();
+  const nextIndex = queueIndex + 1;
+  if (nextIndex < queue.length) {
+    getStore().next();
+    _playSong(queue[nextIndex], undefined, true);
+  } else if (repeat === 'all' && queue.length > 0) {
+    getStore().next();
+    _playSong(queue[0], undefined, true);
+  } else {
+    getStore().next();
+  }
+}
+
+function playPrevious() {
+  const state = getStore();
+  if (state.progress > 3) {
+    if (currentHowl) currentHowl.seek(0);
+    state.seek(0);
+    return;
+  }
+  if (state.queueIndex > 0) {
+    const prevSong = state.queue[state.queueIndex - 1];
+    state.previous();
+    if (prevSong) _playSong(prevSong, undefined, true);
+  }
+}
+
+function setupMediaSession(song: Song) {
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: song.title,
+      artist: song.artist,
+      album: song.album,
+      artwork: [
+        { src: coverArtUrl(song.id, 96), sizes: '96x96', type: 'image/jpeg' },
+        { src: coverArtUrl(song.id, 128), sizes: '128x128', type: 'image/jpeg' },
+        { src: coverArtUrl(song.id, 192), sizes: '192x192', type: 'image/jpeg' },
+        { src: coverArtUrl(song.id, 256), sizes: '256x256', type: 'image/jpeg' },
+        { src: coverArtUrl(song.id, 384), sizes: '384x384', type: 'image/jpeg' },
+        { src: coverArtUrl(song.id, 512), sizes: '512x512', type: 'image/jpeg' },
+      ]
+    });
+
+    navigator.mediaSession.setActionHandler('play', () => {
+      if (currentHowl) currentHowl.play();
+    });
+    navigator.mediaSession.setActionHandler('pause', () => {
+      if (currentHowl) currentHowl.pause();
+    });
+    navigator.mediaSession.setActionHandler('previoustrack', playPrevious);
+    navigator.mediaSession.setActionHandler('nexttrack', playNext);
+    navigator.mediaSession.setActionHandler('seekto', (details) => {
+      if (currentHowl && details.seekTime !== undefined) {
+        currentHowl.seek(details.seekTime);
+        getStore().seek(details.seekTime);
+      }
+    });
+  }
+}
+
 function _playSong(song: Song, queue?: Song[], skipStoreUpdate = false, initialSeek?: number) {
   if (preloaderHowl) { preloaderHowl.unload(); preloaderHowl = null; }
   if (preloadTimeout) { clearTimeout(preloadTimeout); preloadTimeout = null; }
@@ -123,6 +184,7 @@ function _playSong(song: Song, queue?: Song[], skipStoreUpdate = false, initialS
 
   const url = streamUrl(song.id);
   scrobble(song.id, false); // Now playing status
+  setupMediaSession(song);
   
   const howl = new Howl({
     src: [url],
@@ -201,32 +263,8 @@ export function usePlayer() {
     getStore().toggleMute();
   }, []);
 
-  const next = useCallback(() => {
-    const { queue, queueIndex, repeat } = getStore();
-    const nextIndex = queueIndex + 1;
-    if (nextIndex < queue.length) {
-      getStore().next();
-      _playSong(queue[nextIndex], undefined, true);
-    } else if (repeat === 'all' && queue.length > 0) {
-      getStore().next();
-      _playSong(queue[0], undefined, true);
-    } else {
-      getStore().next();
-    }
-  }, []);
-
-  const previous = useCallback(() => {
-    const state = getStore();
-    if (state.progress > 3) {
-      seek(0);
-      return;
-    }
-    if (state.queueIndex > 0) {
-      const prevSong = state.queue[state.queueIndex - 1];
-      getStore().previous();
-      if (prevSong) _playSong(prevSong, undefined, true);
-    }
-  }, [seek]);
+  const next = useCallback(playNext, []);
+  const previous = useCallback(playPrevious, []);
 
   const playAlbum = useCallback((songs: Song[], startIndex = 0) => {
     const song = songs[startIndex];
