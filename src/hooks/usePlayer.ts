@@ -13,10 +13,21 @@ function getStore() {
   return usePlayerStore.getState();
 }
 
+let lastSaveTime = 0;
+
 function startProgressTick(howl: Howl) {
   const tick = () => {
     if (currentHowl === howl && howl.playing()) {
-      getStore().setProgress(howl.seek() as number);
+      const seek = howl.seek();
+      if (typeof seek === 'number') {
+        getStore().setProgress(seek);
+        
+        const now = Date.now();
+        if (now - lastSaveTime > 3000) {
+          localStorage.setItem('novatune-saved-progress', seek.toString());
+          lastSaveTime = now;
+        }
+      }
       requestAnimationFrame(tick);
     }
   };

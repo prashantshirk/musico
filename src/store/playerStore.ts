@@ -57,7 +57,7 @@ export const usePlayerStore = create<PlayerState>()(
       originalQueue: [],
       currentSong: null,
       isPlaying: false,
-      progress: 0,
+      progress: typeof window !== 'undefined' ? Number(localStorage.getItem('novatune-saved-progress')) || 0 : 0,
       duration: 0,
       volume: 1,
       isMuted: false,
@@ -234,11 +234,10 @@ export const usePlayerStore = create<PlayerState>()(
     {
       name: 'novatune-player-state',
       storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({
-        ...state,
-        isPlaying: false, // Always start paused on reload
-        isLoading: false, // Always start not loading
-      }),
+      partialize: (state) => {
+        const { progress, duration, isPlaying, isLoading, ...rest } = state;
+        return rest;
+      },
     }
   )
 );

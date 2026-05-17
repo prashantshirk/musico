@@ -24,16 +24,20 @@ export function ProgressBar({ progress, duration, onSeek }: ProgressBarProps) {
     }
   };
 
-  const handlePointerUp = (e: PointerEvent) => {
+  const handlePointerUp = (clientX: number) => {
     if (isDragging) {
       setIsDragging(false);
       if (barRef.current) {
         const rect = barRef.current.getBoundingClientRect();
-        const rawPercent = (e.clientX - rect.left) / rect.width;
+        const rawPercent = (clientX - rect.left) / rect.width;
         const percent = Math.max(0, Math.min(1, rawPercent));
         onSeek(percent * duration);
       }
     }
+  };
+
+  const handleDocumentPointerUp = (e: PointerEvent) => {
+    handlePointerUp(e.clientX);
   };
 
   const updateProgress = (clientX: number) => {
@@ -48,14 +52,17 @@ export function ProgressBar({ progress, duration, onSeek }: ProgressBarProps) {
   useEffect(() => {
     if (isDragging) {
       document.addEventListener('pointermove', handlePointerMove);
-      document.addEventListener('pointerup', handlePointerUp);
+      document.addEventListener('pointerup', handleDocumentPointerUp);
+      document.addEventListener('pointercancel', handleDocumentPointerUp);
     } else {
       document.removeEventListener('pointermove', handlePointerMove);
-      document.removeEventListener('pointerup', handlePointerUp);
+      document.removeEventListener('pointerup', handleDocumentPointerUp);
+      document.removeEventListener('pointercancel', handleDocumentPointerUp);
     }
     return () => {
       document.removeEventListener('pointermove', handlePointerMove);
-      document.removeEventListener('pointerup', handlePointerUp);
+      document.removeEventListener('pointerup', handleDocumentPointerUp);
+      document.removeEventListener('pointercancel', handleDocumentPointerUp);
     };
   }, [isDragging, duration]);
 
@@ -63,6 +70,8 @@ export function ProgressBar({ progress, duration, onSeek }: ProgressBarProps) {
     <div
       ref={barRef}
       onPointerDown={handlePointerDown}
+      onPointerUp={(e) => handlePointerUp(e.clientX)}
+      onPointerCancel={(e) => handlePointerUp(e.clientX)}
       className="w-full h-8 flex items-center cursor-pointer touch-none group"
     >
       <div className="w-full h-1.5 bg-white/20 rounded-full relative overflow-hidden group-hover:h-2 transition-all">
