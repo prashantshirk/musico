@@ -24,7 +24,7 @@ export function BottomNav() {
           const Icon = tab.icon;
           return (
             <Link key={tab.path} href={tab.path} className="flex-1 h-full">
-              <div className={`flex flex-col items-center justify-center h-full gap-1 transition-colors ${isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}>
+              <div className={`flex flex-col items-center justify-center h-full gap-1 transition-all active:scale-90 active:opacity-70 ${isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}>
                 <Icon size={24} strokeWidth={isActive ? 2.5 : 2} />
                 <span className="text-[10px] font-medium leading-none">{tab.name}</span>
               </div>
