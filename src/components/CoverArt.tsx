@@ -14,8 +14,7 @@ interface CoverArtProps {
 /**
  * Progressive cover art loader with:
  * - IntersectionObserver: only load images visible on screen
- * - Tiny 16px blur placeholder: rendered immediately, no layout shift
- * - Crossfade: smooth transition from placeholder → full res
+ * - Crossfade: smooth transition when full res loads
  */
 export const CoverArt = memo(function CoverArt({ id, alt, className = '', size = 300 }: CoverArtProps) {
   const [isVisible, setIsVisible] = useState(false);
@@ -51,20 +50,10 @@ export const CoverArt = memo(function CoverArt({ id, alt, className = '', size =
     );
   }
 
-  const thumbUrl = coverArtUrl(id, 16);  // tiny placeholder — usually <1KB
   const fullUrl  = coverArtUrl(id, size);
 
   return (
-    <div ref={containerRef} className={`relative overflow-hidden ${className}`}>
-      {/* Blurred placeholder — always rendered immediately */}
-      <img
-        src={thumbUrl}
-        alt=""
-        aria-hidden="true"
-        className="absolute inset-0 w-full h-full object-cover scale-110"
-        style={{ filter: 'blur(12px)', transition: 'opacity 0.3s', opacity: fullLoaded ? 0 : 1 }}
-      />
-
+    <div ref={containerRef} className={`relative overflow-hidden bg-muted ${className}`}>
       {/* Full-resolution image — loaded only when visible */}
       {isVisible && (
         <img
@@ -77,6 +66,14 @@ export const CoverArt = memo(function CoverArt({ id, alt, className = '', size =
           decoding="async"
         />
       )}
+      
+      {/* Placeholder Icon while loading */}
+      {!fullLoaded && (
+        <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
+           <Music size={Math.max(size / 4, 20)} />
+        </div>
+      )}
     </div>
   );
 });
+
