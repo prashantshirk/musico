@@ -197,14 +197,17 @@ function _playSong(song: Song, queue?: Song[], skipStoreUpdate = false, initialS
     },
     onplay: () => {
       getStore().setPlaying(true);
+      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
       schedulePreload();
       startProgressTick(howl);
     },
     onpause: () => {
       getStore().setPlaying(false);
+      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
     },
     onend: () => {
       getStore().setPlaying(false);
+      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'none';
       handleSongEnd();
     },
     onloaderror: (_id: number, err: unknown) => {
