@@ -1,6 +1,6 @@
 import { generateAuth, buildParams } from '../utils/auth';
 
-const BASE = import.meta.env.DEV ? '/api/navidrome' : 'https://music.prashantshirke.me';
+const BASE = '/api/navidrome';
 
 export async function ping(username: string, password: string): Promise<boolean> {
   const auth = generateAuth(username, password);

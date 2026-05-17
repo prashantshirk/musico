@@ -2,7 +2,7 @@ import { subsonicGet } from './client';
 import { useAuthStore } from '../store/authStore';
 import { generateAuth } from '../utils/auth';
 
-const BASE = 'https://music.prashantshirke.me';
+const BASE = '/api/navidrome';
 
 export async function getPlaylists() {
   const res = await subsonicGet<any>('getPlaylists.view');
