@@ -15,8 +15,9 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'Musico',
+        name: 'Musico Player',
         short_name: 'Musico',
+        id: '/?source=pwa',
         description: 'Your personal music streaming app',
         start_url: '/',
         display: 'standalone',
