@@ -1,7 +1,7 @@
 import { useAuthStore } from '../store/authStore';
 import { generateAuth, buildParams } from '../utils/auth';
 
-const BASE = import.meta.env.DEV ? '/api/navidrome' : 'https://music.prashantshirke.me';
+const BASE = '/api/navidrome';
 
 export async function subsonicGet<T>(endpoint: string, params: Record<string, string | number | boolean> = {}): Promise<T> {
   const { username, password } = useAuthStore.getState();

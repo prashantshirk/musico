@@ -3,6 +3,10 @@
     {
       "source": "/api/navidrome/:path*",
       "destination": "https://music.prashantshirke.me/:path*"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
     }
   ]
 }
