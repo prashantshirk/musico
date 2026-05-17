@@ -85,26 +85,28 @@ function handleSongEnd() {
     }
     getStore().next();
     const nextSong = getStore().queue[getStore().queueIndex];
-    if (nextSong) _playSong(nextSong);
+    if (nextSong) _playSong(nextSong, undefined, true);
   } else if (repeat === 'all' && queue.length > 0) {
     getStore().next();
     const firstSong = getStore().queue[0];
-    if (firstSong) _playSong(firstSong);
+    if (firstSong) _playSong(firstSong, undefined, true);
   } else {
     getStore().setProgress(0);
     getStore().setLoading(false);
   }
 }
 
-function _playSong(song: Song, queue?: Song[]) {
+function _playSong(song: Song, queue?: Song[], skipStoreUpdate = false) {
   if (preloaderHowl) { preloaderHowl.unload(); preloaderHowl = null; }
   if (preloadTimeout) { clearTimeout(preloadTimeout); preloadTimeout = null; }
   if (currentHowl) { currentHowl.unload(); currentHowl = null; }
 
-  if (queue !== undefined) {
-    getStore().playSong(song, queue);
-  } else {
-    getStore().playSong(song);
+  if (!skipStoreUpdate) {
+    if (queue !== undefined) {
+      getStore().playSong(song, queue);
+    } else {
+      getStore().playSong(song);
+    }
   }
   getStore().setLoading(true);
 
@@ -176,10 +178,12 @@ export function usePlayer() {
     const { queue, queueIndex, repeat } = getStore();
     const nextIndex = queueIndex + 1;
     if (nextIndex < queue.length) {
-      _playSong(queue[nextIndex]);
       getStore().next();
+      _playSong(queue[nextIndex], undefined, true);
     } else if (repeat === 'all' && queue.length > 0) {
-      _playSong(queue[0]);
+      getStore().next();
+      _playSong(queue[0], undefined, true);
+    } else {
       getStore().next();
     }
   }, []);
@@ -193,7 +197,7 @@ export function usePlayer() {
     if (state.queueIndex > 0) {
       const prevSong = state.queue[state.queueIndex - 1];
       getStore().previous();
-      if (prevSong) _playSong(prevSong);
+      if (prevSong) _playSong(prevSong, undefined, true);
     }
   }, [seek]);
 

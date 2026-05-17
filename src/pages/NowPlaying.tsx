@@ -128,7 +128,7 @@ export default function NowPlaying() {
             alt={currentSong.album}
             crossOrigin="anonymous"
             onLoad={handleImageLoad}
-            className={`w-full max-w-sm aspect-square object-cover rounded-xl shadow-2xl transition-transform duration-500 ease-out ${isPlaying ? 'scale-100' : 'scale-95 opacity-90'}`}
+            className={`w-full h-full max-h-[50vh] max-w-sm aspect-square object-contain rounded-xl shadow-2xl transition-transform duration-500 ease-out ${isPlaying ? 'scale-100' : 'scale-95 opacity-90'}`}
           />
         </div>
 
@@ -210,13 +210,13 @@ export default function NowPlaying() {
             <VolumeSlider volume={isMuted ? 0 : volume} onVolumeChange={setVolume} />
             <div className="flex items-center gap-4 ml-6 shrink-0">
               <button 
-                onClick={() => setShowLyrics(true)}
+                onClick={(e) => { e.stopPropagation(); setShowLyrics(true); }}
                 className="p-2 text-white/70 hover:text-white transition-colors"
               >
                 <MessageSquare size={20} />
               </button>
               <button 
-                onClick={() => setLocation('/queue')}
+                onClick={(e) => { e.stopPropagation(); setLocation('/queue'); }}
                 className="p-2 text-white/70 hover:text-white transition-colors"
               >
                 <ListMusic size={20} />
