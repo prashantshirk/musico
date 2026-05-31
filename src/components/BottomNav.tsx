@@ -17,7 +17,7 @@ export function BottomNav() {
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 h-16 bg-black/60 backdrop-blur-2xl border-t border-white/5 z-50 pb-safe">
+    <nav className="fixed bottom-0 left-0 right-0 h-16 bg-background/90 backdrop-blur-2xl border-t border-border z-50 pb-safe">
       <div className="flex items-center justify-around h-full px-2">
         {tabs.map(tab => {
           const isActive = location.startsWith(tab.path);

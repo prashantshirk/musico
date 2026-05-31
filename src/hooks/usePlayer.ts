@@ -15,6 +15,13 @@ function getStore() {
 
 let lastSaveTime = 0;
 
+function cleanupHowl(howl: Howl | null) {
+  if (!howl) return;
+  howl.off();
+  howl.stop();
+  howl.unload();
+}
+
 function startProgressTick(howl: Howl) {
   const tick = () => {
     if (currentHowl === howl && howl.playing()) {
@@ -111,13 +118,19 @@ function playNext() {
   const { queue, queueIndex, repeat } = getStore();
   const nextIndex = queueIndex + 1;
   if (nextIndex < queue.length) {
+    const nextSong = queue[nextIndex];
     getStore().next();
-    _playSong(queue[nextIndex], undefined, true);
+    if (nextSong) _playSong(nextSong, undefined, true);
   } else if (repeat === 'all' && queue.length > 0) {
+    const firstSong = queue[0];
     getStore().next();
-    _playSong(queue[0], undefined, true);
+    if (firstSong) _playSong(firstSong, undefined, true);
   } else {
     getStore().next();
+    if (currentHowl) {
+      currentHowl.pause();
+      currentHowl.seek(0);
+    }
   }
 }
 
@@ -169,9 +182,9 @@ function setupMediaSession(song: Song) {
 }
 
 function _playSong(song: Song, queue?: Song[], skipStoreUpdate = false, initialSeek?: number) {
-  if (preloaderHowl) { preloaderHowl.unload(); preloaderHowl = null; }
+  if (preloaderHowl) { cleanupHowl(preloaderHowl); preloaderHowl = null; }
   if (preloadTimeout) { clearTimeout(preloadTimeout); preloadTimeout = null; }
-  if (currentHowl) { currentHowl.unload(); currentHowl = null; }
+  if (currentHowl) { cleanupHowl(currentHowl); currentHowl = null; }
 
   if (!skipStoreUpdate) {
     if (queue !== undefined) {
@@ -232,7 +245,7 @@ export function usePlayer() {
   }, []);
 
   const togglePlay = useCallback(() => {
-    if (!currentHowl) {
+    if (!currentHowl || currentHowl.state() === 'unloaded') {
       const state = getStore();
       if (state.currentSong) {
         _playSong(state.currentSong, undefined, true, state.progress);

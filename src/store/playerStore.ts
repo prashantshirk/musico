@@ -67,19 +67,19 @@ export const usePlayerStore = create<PlayerState>()(
 
       playSong: (song, newQueue) => {
         set((state) => {
-          let q = newQueue || state.queue;
+          let q = newQueue && newQueue.length > 0 ? [...newQueue] : [...state.queue];
           let qIndex = q.findIndex(s => s.id === song.id);
           if (qIndex === -1) {
-            q = [song];
+            q = [song, ...q.filter(s => s.id !== song.id)];
             qIndex = 0;
           }
           
-          let origQ = newQueue ? [...newQueue] : state.originalQueue;
+          let origQ = newQueue ? [...q] : (state.originalQueue.length > 0 ? [...state.originalQueue] : [...q]);
 
-          if (state.shuffle && newQueue) {
-            origQ = [...newQueue];
-            const currentInNew = newQueue[qIndex];
-            const rest = newQueue.filter((_, i) => i !== qIndex);
+          if (state.shuffle && newQueue && q.length > 0) {
+            origQ = [...q];
+            const currentInNew = q[qIndex];
+            const rest = q.filter((_, i) => i !== qIndex);
             q = [currentInNew, ...shuffleArray(rest)];
             qIndex = 0;
           }
