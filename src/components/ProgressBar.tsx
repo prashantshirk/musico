@@ -37,10 +37,6 @@ export function ProgressBar({ progress, duration, onSeek }: ProgressBarProps) {
     }
   };
 
-  const stopTouchPropagation = (e: React.TouchEvent<HTMLDivElement>) => {
-    e.stopPropagation();
-  };
-
   const handleDocumentPointerUp = (e: PointerEvent) => {
     handlePointerUp(e.clientX);
   };
@@ -83,9 +79,9 @@ export function ProgressBar({ progress, duration, onSeek }: ProgressBarProps) {
         e.stopPropagation();
         handlePointerUp(e.clientX);
       }}
-      onTouchStart={stopTouchPropagation}
-      onTouchMove={stopTouchPropagation}
-      onTouchEnd={stopTouchPropagation}
+      onTouchStart={(e) => e.stopPropagation()}
+      onTouchMove={(e) => e.stopPropagation()}
+      onTouchEnd={(e) => e.stopPropagation()}
       className="w-full h-8 flex items-center cursor-pointer touch-none group"
     >
       <div className="w-full h-1.5 bg-white/20 rounded-full relative overflow-hidden group-hover:h-2 transition-all">

@@ -5,15 +5,12 @@ import { AlbumCard } from '../components/AlbumCard';
 import { SongRow } from '../components/SongRow';
 import { usePlayer } from '../hooks/usePlayer';
 import { Moon, Sun } from 'lucide-react';
-
-const THEME_STORAGE_KEY = 'musico-theme';
+import { applyTheme, getInitialTheme, ThemeMode } from '../utils/theme';
 
 export default function Home() {
   const { playAlbum } = usePlayer();
   const [loadExtraSections, setLoadExtraSections] = useState(false);
-  const [theme, setTheme] = useState<'dark' | 'light'>(() =>
-    document.documentElement.classList.contains('dark') ? 'dark' : 'light'
-  );
+  const [theme, setTheme] = useState<ThemeMode>(() => getInitialTheme());
 
   useEffect(() => {
     const timer = window.setTimeout(() => setLoadExtraSections(true), 500);
@@ -52,8 +49,7 @@ export default function Home() {
   const toggleTheme = () => {
     const nextTheme = theme === 'dark' ? 'light' : 'dark';
     setTheme(nextTheme);
-    document.documentElement.classList.toggle('dark', nextTheme === 'dark');
-    localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+    applyTheme(nextTheme);
   };
 
   const SectionTitle = ({ children }: { children: React.ReactNode }) => (

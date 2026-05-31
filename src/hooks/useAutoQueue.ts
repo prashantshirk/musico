@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { usePlayerStore } from '../store/playerStore';
 import { getSimilarSongs } from '../api/similar';
 
-const MIN_REMAINING_SONGS = 1;
+const AUTO_QUEUE_THRESHOLD = 1;
 const AUTO_QUEUE_BATCH_SIZE = 4;
 
 export function useAutoQueue() {
@@ -12,11 +12,10 @@ export function useAutoQueue() {
   useEffect(() => {
     const songsRemaining = queue.length - queueIndex - 1;
 
-    if (songsRemaining < MIN_REMAINING_SONGS && currentSong && !isFetchingRef.current) {
+    if (songsRemaining < AUTO_QUEUE_THRESHOLD && currentSong && !isFetchingRef.current) {
       isFetchingRef.current = true;
-      const seedSongId = currentSong.id;
 
-      getSimilarSongs(seedSongId, AUTO_QUEUE_BATCH_SIZE)
+      getSimilarSongs(currentSong.id, AUTO_QUEUE_BATCH_SIZE)
         .then((similarSongs) => {
           const state = usePlayerStore.getState();
           const currentIds = new Set(state.queue.map((song) => song.id));

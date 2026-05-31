@@ -3,14 +3,11 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
 import { Howler } from 'howler';
-
-const THEME_STORAGE_KEY = 'musico-theme';
+import { applyTheme, getInitialTheme } from './utils/theme';
 
 function Root() {
   useEffect(() => {
-    const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
-    const initialTheme = savedTheme === 'light' ? 'light' : 'dark';
-    document.documentElement.classList.toggle('dark', initialTheme === 'dark');
+    applyTheme(getInitialTheme());
 
     // iOS Audio unlock
     const unlockAudio = () => {
