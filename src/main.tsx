@@ -4,10 +4,13 @@ import App from "./App";
 import "./index.css";
 import { Howler } from 'howler';
 
+const THEME_STORAGE_KEY = 'musico-theme';
+
 function Root() {
   useEffect(() => {
-    // Force dark mode
-    document.documentElement.classList.add("dark");
+    const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+    const initialTheme = savedTheme === 'light' ? 'light' : 'dark';
+    document.documentElement.classList.toggle('dark', initialTheme === 'dark');
 
     // iOS Audio unlock
     const unlockAudio = () => {
