@@ -70,7 +70,7 @@ export const usePlayerStore = create<PlayerState>()(
           let q = newQueue && newQueue.length > 0 ? [...newQueue] : [...state.queue];
           let qIndex = q.findIndex(s => s.id === song.id);
           if (qIndex === -1) {
-            q = [song, ...q.filter(s => s.id !== song.id)];
+            q = [song, ...q];
             qIndex = 0;
           }
           
