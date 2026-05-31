@@ -25,7 +25,7 @@ export function useAutoQueue() {
             usePlayerStore.getState().appendToQueue(newSongs);
           }
         } catch (error) {
-          console.error(error);
+          console.error('Failed to fetch auto-queue songs:', error);
         }
       })();
     }
