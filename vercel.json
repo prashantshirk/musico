@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/navidrome/:path*",
-      "destination": "https://music.prashantshirke.me/:path*"
+      "destination": "https://music.prashantshirk.me/:path*"
     },
     {
       "source": "/((?!api/).*)",

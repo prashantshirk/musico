@@ -6,6 +6,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 const port = Number(process.env.PORT) || 5173;
 const basePath = process.env.BASE_PATH || "/";
+const navidromeTarget = process.env.NAVIDROME_PROXY_TARGET || 'https://music.prashantshirk.me';
 
 export default defineConfig({
   base: basePath,
@@ -91,7 +92,7 @@ export default defineConfig({
     allowedHosts: true,
     proxy: {
       '/api/navidrome': {
-        target: 'https://music.prashantshirke.me',
+        target: navidromeTarget,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/navidrome/, ''),
       }
