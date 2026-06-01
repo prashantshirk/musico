@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, TouchEvent, MouseEvent } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 interface ProgressBarProps {
   progress: number;
@@ -14,6 +14,7 @@ export function ProgressBar({ progress, duration, onSeek }: ProgressBarProps) {
   const currentPercent = duration > 0 ? (isDragging ? dragProgress : progress) / duration * 100 : 0;
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.stopPropagation();
     setIsDragging(true);
     updateProgress(e.clientX);
   };
@@ -70,8 +71,17 @@ export function ProgressBar({ progress, duration, onSeek }: ProgressBarProps) {
     <div
       ref={barRef}
       onPointerDown={handlePointerDown}
-      onPointerUp={(e) => handlePointerUp(e.clientX)}
-      onPointerCancel={(e) => handlePointerUp(e.clientX)}
+      onPointerUp={(e) => {
+        e.stopPropagation();
+        handlePointerUp(e.clientX);
+      }}
+      onPointerCancel={(e) => {
+        e.stopPropagation();
+        handlePointerUp(e.clientX);
+      }}
+      onTouchStart={(e) => e.stopPropagation()}
+      onTouchMove={(e) => e.stopPropagation()}
+      onTouchEnd={(e) => e.stopPropagation()}
       className="w-full h-8 flex items-center cursor-pointer touch-none group"
     >
       <div className="w-full h-1.5 bg-white/20 rounded-full relative overflow-hidden group-hover:h-2 transition-all">

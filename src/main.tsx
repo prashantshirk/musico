@@ -3,11 +3,11 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
 import { Howler } from 'howler';
+import { applyTheme, getInitialTheme } from './utils/theme';
 
 function Root() {
   useEffect(() => {
-    // Force dark mode
-    document.documentElement.classList.add("dark");
+    applyTheme(getInitialTheme());
 
     // iOS Audio unlock
     const unlockAudio = () => {
