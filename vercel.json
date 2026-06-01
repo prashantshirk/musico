@@ -1,9 +1,21 @@
 {
   "framework": "vite",
-  "rewrites": [
+  "functions": {
+    "api/**/*.ts": {
+      "runtime": "nodejs20.x"
+    }
+  },
+  "routes": [
     {
-      "source": "/:path((?!api/|.*\\..*).*)",
-      "destination": "/index.html"
+      "src": "/api/navidrome/(.*)",
+      "dest": "/api/navidrome/[...path].ts"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ],
   "outputDirectory": "dist"
