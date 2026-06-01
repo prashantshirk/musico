@@ -1,12 +1,14 @@
 {
+  "framework": "vite",
   "rewrites": [
     {
       "source": "/api/navidrome/:path*",
       "destination": "https://music.prashantshirk.me/:path*"
     },
     {
-      "source": "/((?!api/).*)",
+      "source": "/:path((?!api/|.*\\..*).*)",
       "destination": "/index.html"
     }
-  ]
+  ],
+  "outputDirectory": "dist"
 }
