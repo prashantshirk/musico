@@ -4,7 +4,6 @@ import { usePlayerStore } from '../store/playerStore';
 import { usePlayer } from '../hooks/usePlayer';
 import { coverArtUrl } from '../api/client';
 import { formatTime } from '../utils/time';
-import { getDominantColor } from '../utils/color';
 import { ProgressBar } from '../components/ProgressBar';
 import { VolumeSlider } from '../components/VolumeSlider';
 import { LyricsPanel } from '../components/LyricsPanel';
@@ -19,11 +18,9 @@ export default function NowPlaying() {
   const [, setLocation] = useLocation();
   const { currentSong, isPlaying, progress, duration, volume, isMuted, repeat, shuffle } = usePlayerStore();
   const { togglePlay, next, previous, seek, setVolume, toggleMute } = usePlayer();
-  const [dominantColor, setDominantColor] = useState<string>('rgb(15,15,15)');
   const [showLyrics, setShowLyrics] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const [isStarred, setIsStarred] = useState(false);
-  const imgRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
     if (currentSong) {
@@ -34,13 +31,6 @@ export default function NowPlaying() {
   }, [currentSong, setLocation]);
 
   if (!currentSong) return null;
-
-  const handleImageLoad = () => {
-    if (imgRef.current) {
-      const color = getDominantColor(imgRef.current);
-      setDominantColor(color);
-    }
-  };
 
   const handleStar = () => {
     if (isStarred) {
@@ -85,41 +75,23 @@ export default function NowPlaying() {
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex flex-col bg-background overflow-hidden animate-in slide-in-from-bottom-full duration-300"
+      className="fixed inset-0 z-50 flex flex-col bg-background dark:bg-black/95 overflow-hidden animate-in slide-in-from-bottom-full duration-300"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Dynamic blurred background */}
-      <div 
-        className="absolute inset-0 z-0 opacity-40 transition-opacity duration-1000"
-        style={{
-          backgroundImage: `url(${bgUrl})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          filter: 'blur(40px) brightness(0.3) scale(1.1)'
-        }}
-      />
-      {/* Gradient overlay */}
-      <div 
-        className="absolute inset-0 z-0 transition-colors duration-1000"
-        style={{
-          background: `linear-gradient(to bottom, transparent 0%, ${dominantColor} 100%)`,
-          opacity: 0.8
-        }}
-      />
 
       <div className="relative z-10 flex flex-col h-full pt-safe">
         {/* Header */}
         <header className="flex items-center justify-between px-4 py-4 shrink-0">
-          <button onClick={() => window.history.back()} className="p-2 -ml-2 text-white/80 hover:text-white transition-colors">
+          <button onClick={() => window.history.back()} className="p-2 -ml-2 text-foreground/80 hover:text-foreground transition-colors">
             <ChevronDown size={28} />
           </button>
-          <div className="text-center text-xs font-semibold tracking-widest text-white/70 uppercase">
+          <div className="text-center text-xs font-semibold tracking-widest text-muted-foreground uppercase">
             {currentSong.album}
           </div>
           <button 
             onClick={() => setShowInfo(true)}
-            className="p-2 -mr-2 text-white/80 hover:text-white transition-colors"
+            className="p-2 -mr-2 text-foreground/80 hover:text-foreground transition-colors"
           >
             <Info size={24} />
           </button>
@@ -128,12 +100,10 @@ export default function NowPlaying() {
         {/* Artwork */}
         <div className="flex-1 flex items-center justify-center px-8 py-4 min-h-0">
           <img 
-            ref={imgRef}
             src={bgUrl} 
             alt={currentSong.album}
             crossOrigin="anonymous"
-            onLoad={handleImageLoad}
-            className={`w-full h-full max-h-[50vh] max-w-sm aspect-square object-contain rounded-xl shadow-2xl transition-transform duration-500 ease-out ${isPlaying ? 'scale-100' : 'scale-95 opacity-90'}`}
+            className={`w-full h-full max-h-[50vh] max-w-sm aspect-square object-cover rounded-2xl shadow-[0_15px_50px_rgba(0,0,0,0.15)] dark:shadow-[0_15px_50px_rgba(0,0,0,0.4)] transition-transform duration-500 ease-out ${isPlaying ? 'scale-100' : 'scale-95 opacity-90'}`}
           />
         </div>
 
@@ -142,16 +112,16 @@ export default function NowPlaying() {
           {/* Metadata */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex flex-col min-w-0 pr-4">
-              <h1 className="text-2xl font-syne font-bold text-white truncate mb-1">
+              <h1 className="text-2xl font-syne font-bold text-foreground truncate mb-1">
                 {currentSong.title}
               </h1>
-              <p className="text-lg text-white/70 truncate">
+              <p className="text-lg text-muted-foreground truncate">
                 {currentSong.artist}
               </p>
             </div>
             <button 
               onClick={handleStar}
-              className={`p-2 shrink-0 rounded-full transition-colors ${isStarred ? 'text-primary' : 'text-white/70 hover:text-white'}`}
+              className={`p-2 shrink-0 rounded-full transition-colors ${isStarred ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
             >
               <Star size={24} fill={isStarred ? "currentColor" : "none"} />
             </button>
@@ -160,7 +130,7 @@ export default function NowPlaying() {
           {/* Progress */}
           <div className="mb-6">
             <ProgressBar progress={progress} duration={duration} onSeek={seek} />
-            <div className="flex justify-between text-xs text-white/60 font-medium mt-2 tabular-nums">
+            <div className="flex justify-between text-xs text-muted-foreground font-medium mt-2 tabular-nums">
               <span>{formatTime(progress)}</span>
               <span>{formatTime(duration)}</span>
             </div>
@@ -172,7 +142,7 @@ export default function NowPlaying() {
               onTouchStart={(e) => e.stopPropagation()}
               onTouchEnd={(e) => e.stopPropagation()}
               onClick={toggleShuffle}
-              className={`p-2 transition-colors ${shuffle ? 'text-primary' : 'text-white/60 hover:text-white'}`}
+              className={`p-2 transition-colors ${shuffle ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
             >
               <Shuffle size={20} />
             </button>
@@ -182,7 +152,7 @@ export default function NowPlaying() {
                 onTouchStart={(e) => e.stopPropagation()}
                 onTouchEnd={(e) => e.stopPropagation()}
                 onClick={previous}
-                className="p-2 text-white/90 hover:text-white hover:scale-110 transition-all"
+                className="p-2 text-foreground/90 hover:text-foreground hover:scale-110 transition-all"
               >
                 <SkipBack size={32} fill="currentColor" />
               </button>
@@ -191,7 +161,7 @@ export default function NowPlaying() {
                 onTouchStart={(e) => e.stopPropagation()}
                 onTouchEnd={(e) => e.stopPropagation()}
                 onClick={togglePlay}
-                className="w-16 h-16 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 transition-transform shadow-lg"
+                className="w-16 h-16 rounded-full bg-foreground text-background flex items-center justify-center hover:scale-105 transition-transform shadow-lg"
               >
                 {isPlaying ? (
                   <Pause size={32} fill="currentColor" />
@@ -204,7 +174,7 @@ export default function NowPlaying() {
                 onTouchStart={(e) => e.stopPropagation()}
                 onTouchEnd={(e) => e.stopPropagation()}
                 onClick={next}
-                className="p-2 text-white/90 hover:text-white hover:scale-110 transition-all"
+                className="p-2 text-foreground/90 hover:text-foreground hover:scale-110 transition-all"
               >
                 <SkipForward size={32} fill="currentColor" />
               </button>
@@ -214,21 +184,21 @@ export default function NowPlaying() {
               onTouchStart={(e) => e.stopPropagation()}
               onTouchEnd={(e) => e.stopPropagation()}
               onClick={cycleRepeat}
-              className={`p-2 transition-colors ${repeat !== 'none' ? 'text-primary' : 'text-white/60 hover:text-white'}`}
+              className={`p-2 transition-colors ${repeat !== 'none' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
             >
               {repeat === 'one' ? <Repeat1 size={20} /> : <Repeat size={20} />}
             </button>
           </div>
 
           {/* Bottom Actions Row */}
-          <div className="flex items-center justify-between py-4 opacity-80">
+          <div className="flex items-center justify-between py-4">
             <VolumeSlider volume={isMuted ? 0 : volume} onVolumeChange={setVolume} />
             <div className="flex items-center gap-4 ml-6 shrink-0">
               <button 
                 onTouchStart={(e) => e.stopPropagation()}
                 onTouchEnd={(e) => e.stopPropagation()}
                 onClick={() => setShowLyrics(true)}
-                className="p-2 text-white/70 hover:text-white transition-colors"
+                className="p-2 text-muted-foreground hover:text-foreground transition-colors"
               >
                 <MessageSquare size={20} />
               </button>
@@ -236,7 +206,7 @@ export default function NowPlaying() {
                 onTouchStart={(e) => e.stopPropagation()}
                 onTouchEnd={(e) => e.stopPropagation()}
                 onClick={() => setLocation('/queue')}
-                className="p-2 text-white/70 hover:text-white transition-colors"
+                className="p-2 text-muted-foreground hover:text-foreground transition-colors"
               >
                 <ListMusic size={20} />
               </button>
