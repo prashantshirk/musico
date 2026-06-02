@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Download, X, Share } from 'lucide-react';
+import { useAuthStore } from '../store/authStore';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -10,13 +11,23 @@ export function InstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
+  const isLoggedIn = useAuthStore(state => state.isLoggedIn);
 
   useEffect(() => {
+    // Only show if logged in
+    if (!isLoggedIn) return;
+
     // 1. Detect if already running as installed app (standalone mode)
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
                          (window.navigator as any).standalone;
     
     if (isStandalone) {
+      return;
+    }
+
+    // Check if they dismissed it permanently
+    const dismissed = localStorage.getItem('nt-install-dismissed');
+    if (dismissed) {
       return;
     }
 
@@ -32,22 +43,14 @@ export function InstallPrompt() {
 
     if (isIOSDevice) {
       // iOS doesn't support beforeinstallprompt, so we show the prompt directly
-      // Check if they dismissed it in this session to not be intrusive
-      const dismissed = sessionStorage.getItem('nt-install-dismissed');
-      if (!dismissed) {
-        setIsVisible(true);
-      }
+      setIsVisible(true);
     }
 
     // 4. Handle Android/Chrome beforeinstallprompt event
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
-      
-      const dismissed = sessionStorage.getItem('nt-install-dismissed');
-      if (!dismissed) {
-        setIsVisible(true);
-      }
+      setIsVisible(true);
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -55,7 +58,7 @@ export function InstallPrompt() {
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     };
-  }, []);
+  }, [isLoggedIn]);
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) return;
@@ -75,11 +78,11 @@ export function InstallPrompt() {
 
   const handleDismiss = () => {
     setIsVisible(false);
-    // Keep it dismissed only for the current session so they are prompted next time they visit
-    sessionStorage.setItem('nt-install-dismissed', 'true');
+    // Keep it dismissed permanently using localStorage
+    localStorage.setItem('nt-install-dismissed', 'true');
   };
 
-  if (!isVisible) return null;
+  if (!isVisible || !isLoggedIn) return null;
 
   return (
     <div className="fixed bottom-24 left-4 right-4 z-50 animate-in slide-in-from-bottom-6 duration-500">

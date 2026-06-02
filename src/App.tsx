@@ -10,6 +10,7 @@ import { useScrobble } from "./hooks/useScrobble";
 import { useMediaSession } from "./hooks/useMediaSession";
 import { MiniPlayer } from "./components/MiniPlayer";
 import { BottomNav } from "./components/BottomNav";
+import { InstallPrompt } from "./components/InstallPrompt";
 
 import Login from "./pages/Login";
 import Home from "./pages/Home";
@@ -101,6 +102,7 @@ function AppShell() {
 
       {showChrome && currentSong && <MiniPlayer />}
       {showChrome && <BottomNav />}
+      <InstallPrompt />
     </>
   );
 }
