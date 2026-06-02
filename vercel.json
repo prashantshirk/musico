@@ -3,7 +3,7 @@
   "routes": [
     {
       "src": "/api/navidrome/(.*)",
-      "dest": "/api/navidrome/[...path].ts"
+      "dest": "https://music.prashantshirke.me/$1"
     },
     {
       "handle": "filesystem"
