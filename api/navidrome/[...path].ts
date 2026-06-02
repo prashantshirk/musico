@@ -1,4 +1,4 @@
-const DEFAULT_TARGET = "https://music.prashantshirk.me";
+const DEFAULT_TARGET = "https://music.prashantshirke.me";
 
 function getTargetBase() {
   return (process.env.NAVIDROME_PROXY_TARGET || DEFAULT_TARGET).replace(/\/+$/, "");
