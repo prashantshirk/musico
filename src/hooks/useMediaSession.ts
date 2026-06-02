@@ -9,17 +9,19 @@ export function useMediaSession() {
 
   useEffect(() => {
     if ('mediaSession' in navigator && currentSong) {
+      const getAbsoluteUrl = (url: string) => new URL(url, window.location.origin).href;
+      
       navigator.mediaSession.metadata = new MediaMetadata({
         title: currentSong.title,
         artist: currentSong.artist,
         album: currentSong.album,
         artwork: [
-          { src: coverArtUrl(currentSong.id, 96), sizes: '96x96', type: 'image/jpeg' },
-          { src: coverArtUrl(currentSong.id, 128), sizes: '128x128', type: 'image/jpeg' },
-          { src: coverArtUrl(currentSong.id, 192), sizes: '192x192', type: 'image/jpeg' },
-          { src: coverArtUrl(currentSong.id, 256), sizes: '256x256', type: 'image/jpeg' },
-          { src: coverArtUrl(currentSong.id, 384), sizes: '384x384', type: 'image/jpeg' },
-          { src: coverArtUrl(currentSong.id, 512), sizes: '512x512', type: 'image/jpeg' },
+          { src: getAbsoluteUrl(coverArtUrl(currentSong.id, 96)), sizes: '96x96', type: 'image/jpeg' },
+          { src: getAbsoluteUrl(coverArtUrl(currentSong.id, 128)), sizes: '128x128', type: 'image/jpeg' },
+          { src: getAbsoluteUrl(coverArtUrl(currentSong.id, 192)), sizes: '192x192', type: 'image/jpeg' },
+          { src: getAbsoluteUrl(coverArtUrl(currentSong.id, 256)), sizes: '256x256', type: 'image/jpeg' },
+          { src: getAbsoluteUrl(coverArtUrl(currentSong.id, 384)), sizes: '384x384', type: 'image/jpeg' },
+          { src: getAbsoluteUrl(coverArtUrl(currentSong.id, 512)), sizes: '512x512', type: 'image/jpeg' },
         ]
       });
 

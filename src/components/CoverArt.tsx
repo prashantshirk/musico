@@ -17,58 +17,35 @@ interface CoverArtProps {
  * - Crossfade: smooth transition when full res loads
  */
 export const CoverArt = memo(function CoverArt({ id, alt, className = '', size = 300 }: CoverArtProps) {
-  const [isVisible, setIsVisible] = useState(false);
-  const [fullLoaded, setFullLoaded] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  // Observe when this element enters the viewport
-  useEffect(() => {
-    if (!id) return;
-    const el = containerRef.current;
-    if (!el) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.disconnect();
-        }
-      },
-      { rootMargin: '200px' } // start loading 200px before it enters view
-    );
-
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [id]);
 
   if (!id || error) {
     return (
-      <div ref={containerRef} className={`flex items-center justify-center bg-muted text-muted-foreground ${className}`}>
+      <div className={`flex items-center justify-center bg-muted text-muted-foreground ${className}`}>
         <Music size={Math.max(size / 4, 20)} />
       </div>
     );
   }
 
-  const fullUrl  = coverArtUrl(id, size);
+  const fullUrl = coverArtUrl(id, size);
 
   return (
-    <div ref={containerRef} className={`relative overflow-hidden bg-muted ${className}`}>
-      {/* Full-resolution image — loaded only when visible */}
-      {isVisible && (
-        <img
-          src={fullUrl}
-          alt={alt}
-          onLoad={() => setFullLoaded(true)}
-          onError={() => setError(true)}
-          className="absolute inset-0 w-full h-full object-cover"
-          style={{ opacity: fullLoaded ? 1 : 0, transition: 'opacity 0.4s ease' }}
-          decoding="async"
-        />
-      )}
+    <div className={`relative overflow-hidden bg-muted ${className}`}>
+      {/* Full-resolution image — native lazy load */}
+      <img
+        src={fullUrl}
+        alt={alt}
+        loading="lazy"
+        decoding="async"
+        onLoad={() => setLoaded(true)}
+        onError={() => setError(true)}
+        className="absolute inset-0 w-full h-full object-cover"
+        style={{ opacity: loaded ? 1 : 0, transition: 'opacity 0.4s ease' }}
+      />
       
       {/* Placeholder Icon while loading */}
-      {!fullLoaded && (
+      {!loaded && (
         <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
            <Music size={Math.max(size / 4, 20)} />
         </div>

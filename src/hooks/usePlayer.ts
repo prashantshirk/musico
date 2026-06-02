@@ -148,38 +148,7 @@ function playPrevious() {
   }
 }
 
-function setupMediaSession(song: Song) {
-  if ('mediaSession' in navigator) {
-    navigator.mediaSession.metadata = new MediaMetadata({
-      title: song.title,
-      artist: song.artist,
-      album: song.album,
-      artwork: [
-        { src: coverArtUrl(song.id, 96), sizes: '96x96', type: 'image/jpeg' },
-        { src: coverArtUrl(song.id, 128), sizes: '128x128', type: 'image/jpeg' },
-        { src: coverArtUrl(song.id, 192), sizes: '192x192', type: 'image/jpeg' },
-        { src: coverArtUrl(song.id, 256), sizes: '256x256', type: 'image/jpeg' },
-        { src: coverArtUrl(song.id, 384), sizes: '384x384', type: 'image/jpeg' },
-        { src: coverArtUrl(song.id, 512), sizes: '512x512', type: 'image/jpeg' },
-      ]
-    });
 
-    navigator.mediaSession.setActionHandler('play', () => {
-      if (currentHowl) currentHowl.play();
-    });
-    navigator.mediaSession.setActionHandler('pause', () => {
-      if (currentHowl) currentHowl.pause();
-    });
-    navigator.mediaSession.setActionHandler('previoustrack', playPrevious);
-    navigator.mediaSession.setActionHandler('nexttrack', playNext);
-    navigator.mediaSession.setActionHandler('seekto', (details) => {
-      if (currentHowl && details.seekTime !== undefined) {
-        currentHowl.seek(details.seekTime);
-        getStore().seek(details.seekTime);
-      }
-    });
-  }
-}
 
 function _playSong(song: Song, queue?: Song[], skipStoreUpdate = false, initialSeek?: number) {
   if (preloaderHowl) { cleanupHowl(preloaderHowl); preloaderHowl = null; }
@@ -197,7 +166,7 @@ function _playSong(song: Song, queue?: Song[], skipStoreUpdate = false, initialS
 
   const url = streamUrl(song.id);
   scrobble(song.id, false); // Now playing status
-  setupMediaSession(song);
+
   
   const howl = new Howl({
     src: [url],
