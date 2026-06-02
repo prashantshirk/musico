@@ -6,7 +6,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 const port = Number(process.env.PORT) || 5173;
 const basePath = process.env.BASE_PATH || "/";
-const navidromeTarget = process.env.NAVIDROME_PROXY_TARGET || 'https://music.prashantshirk.me';
+const navidromeTarget = process.env.NAVIDROME_PROXY_TARGET || 'https://music.prashantshirke.me';
 
 export default defineConfig({
   base: basePath,

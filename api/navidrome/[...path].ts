@@ -6,15 +6,12 @@ function getTargetBase() {
 
 export default async function handler(req: any, res: any) {
   try {
-    const pathParam = req.query.path;
-    const pathParts = Array.isArray(pathParam) ? pathParam : pathParam ? [pathParam] : [];
-    const upstreamPath = pathParts.map((part) => encodeURIComponent(part)).join("/");
-    const url = new URL(`${getTargetBase()}/${upstreamPath}`);
-
-    const incomingQuery = req.url?.split("?")[1];
-    if (incomingQuery) {
-      url.search = incomingQuery;
-    }
+    const basePath = "/api/navidrome";
+    const reqUrl = req.url || "/";
+    // Remove the base path from the incoming request URL
+    const strippedPath = reqUrl.startsWith(basePath) ? reqUrl.slice(basePath.length) : reqUrl;
+    
+    const url = new URL(`${getTargetBase()}${strippedPath}`);
 
     const method = req.method || "GET";
     const hasBody = method !== "GET" && method !== "HEAD";
