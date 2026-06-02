@@ -39,11 +39,11 @@ export function SongInfoModal({ onClose }: SongInfoModalProps) {
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
           <Info className="text-primary" size={24} />
-          <h2 className="text-2xl font-syne font-bold text-white">Song Info</h2>
+          <h2 className="text-2xl font-syne font-bold text-foreground">Song Info</h2>
         </div>
         <button 
           onClick={onClose}
-          className="p-2 text-foreground/60 hover:text-foreground bg-white/5 rounded-full transition-colors"
+          className="p-2 text-foreground/60 hover:text-foreground bg-foreground/5 rounded-full transition-colors"
         >
           <X size={24} />
         </button>
@@ -52,15 +52,15 @@ export function SongInfoModal({ onClose }: SongInfoModalProps) {
       <div className="flex-1 overflow-y-auto pb-32 hide-scrollbar">
         <div className="flex flex-col gap-4">
           {statRows.map((stat, i) => (
-            <div key={i} className="flex items-center gap-4 bg-white/5 p-4 rounded-xl">
+            <div key={i} className="flex items-center gap-4 bg-foreground/5 p-4 rounded-xl">
               <div className="p-2 bg-primary/20 text-primary rounded-lg shrink-0">
                 <stat.icon size={20} />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="text-xs text-white/50 uppercase tracking-wider font-semibold mb-1">
+                <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-1">
                   {stat.label}
                 </div>
-                <div className="text-white font-medium truncate">
+                <div className="text-foreground font-medium truncate">
                   {stat.value}
                 </div>
               </div>

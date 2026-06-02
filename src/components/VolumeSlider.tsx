@@ -66,7 +66,7 @@ export function VolumeSlider({ volume, onVolumeChange }: VolumeSliderProps) {
     <div className="flex items-center gap-3">
       <button 
         onClick={() => onVolumeChange(currentVol === 0 ? 1 : 0)} 
-        className="text-white/70 hover:text-white transition-colors p-1 -m-1"
+        className="text-muted-foreground hover:text-foreground transition-colors p-1 -m-1"
       >
         <VolumeIcon size={18} />
       </button>
@@ -75,9 +75,9 @@ export function VolumeSlider({ volume, onVolumeChange }: VolumeSliderProps) {
         onPointerDown={handlePointerDown}
         className="w-24 md:w-32 h-6 flex items-center cursor-pointer touch-none group"
       >
-        <div className="w-full h-1 bg-white/20 rounded-full relative overflow-hidden group-hover:h-1.5 transition-all">
+        <div className="w-full h-1 bg-foreground/20 rounded-full relative overflow-hidden group-hover:h-1.5 transition-all">
           <div 
-            className="absolute top-0 left-0 h-full bg-white rounded-full"
+            className="absolute top-0 left-0 h-full bg-foreground rounded-full"
             style={{ width: `${currentPercent}%` }}
           />
         </div>

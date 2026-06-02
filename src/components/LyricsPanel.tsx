@@ -58,7 +58,7 @@ export function LyricsPanel({ onClose }: LyricsPanelProps) {
     >
       <button 
         onClick={onClose}
-        className="absolute top-4 right-4 p-2 text-foreground/60 hover:text-foreground bg-white/5 rounded-full"
+        className="absolute top-4 right-4 p-2 text-foreground/60 hover:text-foreground bg-foreground/5 rounded-full"
       >
         <X size={24} />
       </button>
@@ -76,10 +76,10 @@ export function LyricsPanel({ onClose }: LyricsPanelProps) {
                 id={`lyric-line-${i}`}
                 className={`text-2xl md:text-3xl lg:text-4xl font-syne font-bold transition-all duration-300 ${
                   i === activeIndex 
-                    ? 'text-white scale-105' 
+                    ? 'text-foreground scale-105' 
                     : i < activeIndex 
-                      ? 'text-white/30' 
-                      : 'text-white/40'
+                      ? 'text-foreground/30' 
+                      : 'text-foreground/40'
                 }`}
               >
                 {line.value || '♪'}
@@ -87,11 +87,11 @@ export function LyricsPanel({ onClose }: LyricsPanelProps) {
             ))}
           </div>
         ) : unsyncedLyrics?.value ? (
-          <div className="whitespace-pre-wrap text-xl md:text-2xl font-syne font-semibold text-white/80 max-w-2xl mx-auto text-center leading-relaxed">
+          <div className="whitespace-pre-wrap text-xl md:text-2xl font-syne font-semibold text-foreground/80 max-w-2xl mx-auto text-center leading-relaxed">
             {unsyncedLyrics.value}
           </div>
         ) : (
-          <div className="flex justify-center items-center h-full text-white/50 text-xl font-syne">
+          <div className="flex justify-center items-center h-full text-muted-foreground text-xl font-syne">
             No lyrics found
           </div>
         )}

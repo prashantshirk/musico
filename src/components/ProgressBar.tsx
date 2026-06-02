@@ -84,9 +84,9 @@ export function ProgressBar({ progress, duration, onSeek }: ProgressBarProps) {
       onTouchEnd={(e) => e.stopPropagation()}
       className="w-full h-8 flex items-center cursor-pointer touch-none group"
     >
-      <div className="w-full h-1.5 bg-white/20 rounded-full relative overflow-hidden group-hover:h-2 transition-all">
+      <div className="w-full h-1.5 bg-foreground/20 rounded-full relative overflow-hidden group-hover:h-2 transition-all">
         <div 
-          className="absolute top-0 left-0 h-full bg-white rounded-full"
+          className="absolute top-0 left-0 h-full bg-foreground rounded-full"
           style={{ width: `${currentPercent}%` }}
         />
       </div>
