@@ -103,11 +103,11 @@ function handleSongEnd() {
     }
     getStore().next();
     const nextSong = getStore().queue[getStore().queueIndex];
-    if (nextSong) _playSong(nextSong, undefined, true);
+    if (nextSong) _playSong(nextSong, undefined, false, true);
   } else if (repeat === 'all' && queue.length > 0) {
     getStore().next();
     const firstSong = getStore().queue[0];
-    if (firstSong) _playSong(firstSong, undefined, true);
+    if (firstSong) _playSong(firstSong, undefined, false, true);
   } else {
     getStore().setProgress(0);
     getStore().setLoading(false);
@@ -120,11 +120,11 @@ function playNext() {
   if (nextIndex < queue.length) {
     const nextSong = queue[nextIndex];
     getStore().next();
-    if (nextSong) _playSong(nextSong, undefined, true);
+    if (nextSong) _playSong(nextSong, undefined, false, true);
   } else if (repeat === 'all' && queue.length > 0) {
     const firstSong = queue[0];
     getStore().next();
-    if (firstSong) _playSong(firstSong, undefined, true);
+    if (firstSong) _playSong(firstSong, undefined, false, true);
   } else {
     getStore().next();
     if (currentHowl) {
@@ -144,20 +144,20 @@ function playPrevious() {
   if (state.queueIndex > 0) {
     const prevSong = state.queue[state.queueIndex - 1];
     state.previous();
-    if (prevSong) _playSong(prevSong, undefined, true);
+    if (prevSong) _playSong(prevSong, undefined, false, true);
   }
 }
 
 
 
-function _playSong(song: Song, queue?: Song[], skipStoreUpdate = false, initialSeek?: number) {
+function _playSong(song: Song, queue?: Song[], startRefillSession = false, skipStoreUpdate = false, initialSeek?: number) {
   if (preloaderHowl) { cleanupHowl(preloaderHowl); preloaderHowl = null; }
   if (preloadTimeout) { clearTimeout(preloadTimeout); preloadTimeout = null; }
   if (currentHowl) { cleanupHowl(currentHowl); currentHowl = null; }
 
   if (!skipStoreUpdate) {
     if (queue !== undefined) {
-      getStore().playSong(song, queue);
+      getStore().playSong(song, queue, startRefillSession);
     } else {
       getStore().playSong(song);
     }
@@ -209,15 +209,20 @@ function _playSong(song: Song, queue?: Song[], skipStoreUpdate = false, initialS
 }
 
 export function usePlayer() {
-  const playSong = useCallback((song: Song, queue?: Song[]) => {
-    _playSong(song, queue);
+  const playSong = useCallback((song: Song, queue?: Song[], startRefillSession = false) => {
+    _playSong(song, queue, startRefillSession);
+  }, []);
+
+  const playIndividualSong = useCallback((song: Song) => {
+    getStore().startAiRadio(song);
+    _playSong(song, undefined, false, true);
   }, []);
 
   const togglePlay = useCallback(() => {
     if (!currentHowl || currentHowl.state() === 'unloaded') {
       const state = getStore();
       if (state.currentSong) {
-        _playSong(state.currentSong, undefined, true, state.progress);
+        _playSong(state.currentSong, undefined, false, true, state.progress);
       }
       return;
     }
@@ -253,15 +258,15 @@ export function usePlayer() {
 
   const playAlbum = useCallback((songs: Song[], startIndex = 0) => {
     const song = songs[startIndex];
-    if (song) _playSong(song, songs);
+    if (song) _playSong(song, songs, true);
   }, []);
 
   const skipTo = useCallback((index: number) => {
     const { queue } = getStore();
     if (index >= 0 && index < queue.length) {
-      _playSong(queue[index], queue);
+      _playSong(queue[index], queue, false);
     }
   }, []);
 
-  return { playSong, playAlbum, togglePlay, seek, skipTo, setVolume, toggleMute, next, previous };
+  return { playIndividualSong, playSong, playAlbum, togglePlay, seek, skipTo, setVolume, toggleMute, next, previous };
 }

@@ -1,46 +1,72 @@
 import { useEffect, useRef } from 'react';
 import { usePlayerStore } from '../store/playerStore';
-import { getSimilarSongs } from '../api/similar';
-import { getRandomSongs } from '../api/browsing';
-
-const AUTO_QUEUE_THRESHOLD = 1;
-const AUTO_QUEUE_BATCH_SIZE = 4;
+import { RecommendationService } from '../services/RecommendationService';
 
 export function useAutoQueue() {
-  const { queue, queueIndex, currentSong } = usePlayerStore();
+  const { queue, queueIndex, currentSong, isAiRadioSession, aiRadioSessionId } = usePlayerStore();
   const isFetchingRef = useRef(false);
+  const lastSessionIdRef = useRef<string | null>(null);
+
+  // Track recently played songs for filtering
+  useEffect(() => {
+    if (currentSong) {
+      RecommendationService.addToRecentlyPlayed(currentSong.id);
+    }
+  }, [currentSong?.id]);
+
+  // When the session terminates or a new one starts, clear cached prefetch data
+  // and reset the fetch lock so the new session can immediately request songs.
+  useEffect(() => {
+    if (!isAiRadioSession) {
+      RecommendationService.clearSession();
+      isFetchingRef.current = false;
+      lastSessionIdRef.current = null;
+    } else if (aiRadioSessionId !== lastSessionIdRef.current) {
+      // New session started — reset state
+      RecommendationService.clearSession();
+      isFetchingRef.current = false;
+      lastSessionIdRef.current = aiRadioSessionId;
+    }
+  }, [isAiRadioSession, aiRadioSessionId]);
 
   useEffect(() => {
-    const songsRemaining = queue.length - queueIndex - 1;
+    // AI Radio queues refill themselves. Normal queues never do.
+    if (!isAiRadioSession || !aiRadioSessionId || queue.length === 0) return;
 
-    if (songsRemaining < AUTO_QUEUE_THRESHOLD && currentSong && !isFetchingRef.current) {
+    const songsRemaining = queue.length - queueIndex - 1;
+    const seedSongId = queue[queue.length - 1]?.id;
+    if (!seedSongId) return;
+
+    // Prefetch recommendations when 5 or fewer songs are left in the queue,
+    // so they are ready before we need to append them.
+    if (songsRemaining <= 5) {
+      RecommendationService.triggerPrefetch(seedSongId, aiRadioSessionId);
+    }
+
+    // Append recommendations as soon as fewer than 3 songs remain.
+    // This also handles the initial case where AI Radio starts with 1 song (0 remaining).
+    if (songsRemaining < 3 && !isFetchingRef.current) {
+      const capturedSessionId = aiRadioSessionId;
       isFetchingRef.current = true;
 
       (async () => {
         try {
-          const similarSongs = await getSimilarSongs(currentSong.id, AUTO_QUEUE_BATCH_SIZE);
+          const songs = await RecommendationService.getOrFetchImmediate(seedSongId, capturedSessionId);
+
           const state = usePlayerStore.getState();
-          const currentIds = new Set(state.queue.map((song) => song.id));
-          let newSongs = similarSongs
-            .filter((song: any) => !currentIds.has(song.id))
-            .slice(0, AUTO_QUEUE_BATCH_SIZE);
+          // Async safety: discard if session changed
+          if (!state.isAiRadioSession || state.aiRadioSessionId !== capturedSessionId) return;
 
-          if (newSongs.length === 0) {
-            const randomSongs = await getRandomSongs(AUTO_QUEUE_BATCH_SIZE);
-            newSongs = randomSongs
-              .filter((song: any) => !currentIds.has(song.id))
-              .slice(0, AUTO_QUEUE_BATCH_SIZE);
-          }
-
-          if (newSongs.length > 0) {
-            state.appendToQueue(newSongs);
+          const filtered = RecommendationService.filterAndClean(songs, state.queue, state.currentSong);
+          if (filtered.length > 0) {
+            state.appendToQueue(filtered);
           }
         } catch (error) {
-          console.error('Failed to fetch auto-queue songs:', error);
+          console.error('[AI Radio] Failed to refill queue:', error);
         } finally {
           isFetchingRef.current = false;
         }
       })();
     }
-  }, [queueIndex, currentSong?.id, queue.length]);
+  }, [queueIndex, currentSong?.id, queue.length, isAiRadioSession, aiRadioSessionId]);
 }

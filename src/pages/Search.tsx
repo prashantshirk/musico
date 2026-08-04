@@ -19,7 +19,7 @@ function useDebounce<T>(value: T, delay: number): T {
 export default function Search() {
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebounce(query, 300);
-  const { playAlbum } = usePlayer();
+  const { playAlbum, playIndividualSong } = usePlayer();
 
   const { data: results, isLoading } = useQuery({
     queryKey: ['search', debouncedQuery],
@@ -59,7 +59,7 @@ export default function Search() {
                     <SongRow 
                       key={song.id} 
                       song={song} 
-                      onPlay={() => playAlbum(results.songs, index)} 
+                      onPlay={() => playIndividualSong(song)} 
                     />
                   ))}
                 </div>

@@ -17,8 +17,10 @@ interface PlayerState {
   shuffle: boolean;
   repeat: RepeatMode;
   isLoading: boolean;
+  isAiRadioSession: boolean;
+  aiRadioSessionId: string | null;
 
-  playSong: (song: Song, newQueue?: Song[]) => void;
+  playSong: (song: Song, newQueue?: Song[], startRefillSession?: boolean) => void;
   playAlbum: (songs: Song[], startIndex?: number) => void;
   addToQueue: (song: Song) => void;
   addNextInQueue: (song: Song) => void;
@@ -38,6 +40,7 @@ interface PlayerState {
   setLoading: (loading: boolean) => void;
   appendToQueue: (songs: Song[]) => void;
   reorderQueue: (newQueue: Song[]) => void;
+  startAiRadio: (song: Song) => void;
 }
 
 const shuffleArray = (array: Song[]) => {
@@ -64,8 +67,10 @@ export const usePlayerStore = create<PlayerState>()(
       shuffle: false,
       repeat: 'none',
       isLoading: false,
+      isAiRadioSession: false,
+      aiRadioSessionId: null,
 
-      playSong: (song, newQueue) => {
+      playSong: (song, newQueue, startRefillSession = false) => {
         set((state) => {
           let q = newQueue && newQueue.length > 0 ? [...newQueue] : [...state.queue];
           let qIndex = q.findIndex(s => s.id === song.id);
@@ -84,13 +89,23 @@ export const usePlayerStore = create<PlayerState>()(
             qIndex = 0;
           }
 
+          const startsRefillSession = startRefillSession && Boolean(newQueue && newQueue.length > 0);
+          const isAiRadioSession = startsRefillSession ? true : state.isAiRadioSession;
+          const aiRadioSessionId = startsRefillSession
+            ? (typeof crypto !== 'undefined' && crypto.randomUUID
+                ? crypto.randomUUID()
+                : Math.random().toString(36).substring(2) + Date.now().toString(36))
+            : state.aiRadioSessionId;
+
           return {
             currentSong: song,
             queue: q,
             queueIndex: qIndex,
             originalQueue: origQ,
             isPlaying: true,
-            progress: 0
+            progress: 0,
+            isAiRadioSession,
+            aiRadioSessionId
           };
         });
       },
@@ -98,18 +113,22 @@ export const usePlayerStore = create<PlayerState>()(
       playAlbum: (songs, startIndex = 0) => {
         const song = songs[startIndex];
         if (song) {
-          get().playSong(song, songs);
+          get().playSong(song, songs, true);
         }
       },
 
       addToQueue: (song) => {
         set((state) => {
-          if (state.queue.length === 0) {
-            return { queue: [song], originalQueue: [song] };
-          }
-          return { 
-            queue: [...state.queue, song],
-            originalQueue: [...state.originalQueue, song]
+          const base = state.queue.length === 0
+            ? { queue: [song], originalQueue: [song] }
+            : { 
+                queue: [...state.queue, song],
+                originalQueue: [...state.originalQueue, song]
+              };
+          return {
+            ...base,
+            isAiRadioSession: false,
+            aiRadioSessionId: null
           };
         });
       },
@@ -117,7 +136,7 @@ export const usePlayerStore = create<PlayerState>()(
       addNextInQueue: (song) => {
         set((state) => {
           if (state.queue.length === 0) {
-            return { queue: [song], originalQueue: [song] };
+            return { queue: [song], originalQueue: [song], isAiRadioSession: false, aiRadioSessionId: null };
           }
           const newQueue = [...state.queue];
           newQueue.splice(state.queueIndex + 1, 0, song);
@@ -125,7 +144,7 @@ export const usePlayerStore = create<PlayerState>()(
           const newOrigQueue = [...state.originalQueue];
           newOrigQueue.push(song);
 
-          return { queue: newQueue, originalQueue: newOrigQueue };
+          return { queue: newQueue, originalQueue: newOrigQueue, isAiRadioSession: false, aiRadioSessionId: null };
         });
       },
 
@@ -137,14 +156,14 @@ export const usePlayerStore = create<PlayerState>()(
           if (index < state.queueIndex) {
             newIndex--;
           }
-          return { queue: newQueue, queueIndex: newIndex };
+          return { queue: newQueue, queueIndex: newIndex, isAiRadioSession: false, aiRadioSessionId: null };
         });
       },
 
       clearQueue: () => {
         set((state) => {
-          if (!state.currentSong) return { queue: [], originalQueue: [], queueIndex: 0 };
-          return { queue: [state.currentSong], originalQueue: [state.currentSong], queueIndex: 0 };
+          if (!state.currentSong) return { queue: [], originalQueue: [], queueIndex: 0, isAiRadioSession: false, aiRadioSessionId: null };
+          return { queue: [state.currentSong], originalQueue: [state.currentSong], queueIndex: 0, isAiRadioSession: false, aiRadioSessionId: null };
         });
       },
 
@@ -228,14 +247,32 @@ export const usePlayerStore = create<PlayerState>()(
         const currentId = state.queue[state.queueIndex]?.id;
         let newIndex = newQueue.findIndex(s => s.id === currentId);
         if (newIndex === -1) newIndex = 0;
-        return { queue: newQueue, queueIndex: newIndex };
-      })
+        return { queue: newQueue, queueIndex: newIndex, isAiRadioSession: false, aiRadioSessionId: null };
+      }),
+
+      startAiRadio: (song) => {
+        set(() => {
+          const sessionId = typeof crypto !== 'undefined' && crypto.randomUUID
+            ? crypto.randomUUID()
+            : Math.random().toString(36).substring(2) + Date.now().toString(36);
+          return {
+            queue: [song],
+            queueIndex: 0,
+            originalQueue: [song],
+            currentSong: song,
+            isPlaying: true,
+            progress: 0,
+            isAiRadioSession: true,
+            aiRadioSessionId: sessionId
+          };
+        });
+      }
     }),
     {
       name: 'novatune-player-state',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => {
-        const { progress, duration, isPlaying, isLoading, ...rest } = state;
+        const { progress, duration, isPlaying, isLoading, isAiRadioSession, aiRadioSessionId, ...rest } = state;
         return rest;
       },
     }

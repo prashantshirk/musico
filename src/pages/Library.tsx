@@ -101,7 +101,7 @@ function AlbumsTab() {
 }
 
 function SongsTab() {
-  const { playAlbum } = usePlayer();
+  const { playAlbum, playIndividualSong } = usePlayer();
   const { data: songs, isLoading } = useQuery({
     queryKey: ['all-songs'],
     queryFn: () => getRandomSongs(500),
@@ -148,7 +148,7 @@ function SongsTab() {
             >
               <SongRow
                 song={song}
-                onPlay={() => playAlbum(songs, virtualRow.index)}
+                onPlay={() => playIndividualSong(song)}
               />
             </div>
           );

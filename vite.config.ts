@@ -7,6 +7,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 const port = Number(process.env.PORT) || 5173;
 const basePath = process.env.BASE_PATH || "/";
 const navidromeTarget = process.env.NAVIDROME_PROXY_TARGET || 'https://music.prashantshirke.me';
+const aiRecommendationTarget = process.env.AI_RECOMMENDATION_PROXY_TARGET || 'http://104.211.94.130:8001';
 
 export default defineConfig({
   base: basePath,
@@ -95,7 +96,12 @@ export default defineConfig({
         target: navidromeTarget,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/navidrome/, ''),
-      }
+      },
+      '/api/ai-recommendations': {
+        target: aiRecommendationTarget,
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/ai-recommendations/, ''),
+      },
     }
   },
   preview: {

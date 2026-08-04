@@ -8,7 +8,7 @@ import { Moon, Sun } from 'lucide-react';
 import { applyTheme, getInitialTheme, ThemeMode } from '../utils/theme';
 
 export default function Home() {
-  const { playAlbum } = usePlayer();
+  const { playAlbum, playIndividualSong } = usePlayer();
   const [loadExtraSections, setLoadExtraSections] = useState(false);
   const [theme, setTheme] = useState<ThemeMode>(() => getInitialTheme());
 
@@ -120,7 +120,7 @@ export default function Home() {
                 <SongRow 
                   key={song.id} 
                   song={song} 
-                  onPlay={() => playAlbum(starred.song, starred.song.findIndex((s: any) => s.id === song.id))} 
+                  onPlay={() => playIndividualSong(song)} 
                 />
               ))}
             </div>
@@ -149,7 +149,7 @@ export default function Home() {
                 <SongRow 
                   key={song.id} 
                   song={song} 
-                  onPlay={() => playAlbum(randomSongs, randomSongs.findIndex((s: any) => s.id === song.id))} 
+                  onPlay={() => playIndividualSong(song)} 
                 />
               ))}
             </div>

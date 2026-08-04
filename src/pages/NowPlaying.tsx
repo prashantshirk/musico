@@ -16,7 +16,7 @@ import { star, unstar } from '../api/annotation';
 
 export default function NowPlaying() {
   const [, setLocation] = useLocation();
-  const { currentSong, isPlaying, progress, duration, volume, isMuted, repeat, shuffle } = usePlayerStore();
+  const { currentSong, isPlaying, progress, duration, volume, isMuted, repeat, shuffle, isAiRadioSession } = usePlayerStore();
   const { togglePlay, next, previous, seek, setVolume, toggleMute } = usePlayer();
   const [showLyrics, setShowLyrics] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
@@ -86,8 +86,15 @@ export default function NowPlaying() {
           <button onClick={() => window.history.back()} className="p-2 -ml-2 text-foreground/80 hover:text-foreground transition-colors">
             <ChevronDown size={28} />
           </button>
-          <div className="text-center text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-            {currentSong.album}
+          <div className="text-center flex flex-col items-center">
+            {isAiRadioSession && (
+              <span className="text-[10px] bg-primary/20 text-primary border border-primary/30 rounded-full px-2 py-0.5 font-bold uppercase tracking-wider mb-1">
+                AI Radio
+              </span>
+            )}
+            <div className="text-xs font-semibold tracking-widest text-muted-foreground uppercase max-w-[200px] truncate">
+              {currentSong.album}
+            </div>
           </div>
           <button 
             onClick={() => setShowInfo(true)}
