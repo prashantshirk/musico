@@ -141,7 +141,8 @@ class RecommendationServiceClass {
 
     try {
       return await this.fetchRecommendations(songId, sessionId);
-    } catch {
+    } catch (error) {
+      console.error('[AI Radio] Recommendation fetch failed:', error);
       return [];
     }
   }

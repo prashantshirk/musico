@@ -6,6 +6,10 @@
       "dest": "https://music.prashantshirke.me/$1"
     },
     {
+      "src": "/api/ai-recommendations/(.*)",
+      "dest": "http://104.211.94.130:8001/$1"
+    },
+    {
       "handle": "filesystem"
     },
     {
