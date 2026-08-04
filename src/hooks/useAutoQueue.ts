@@ -7,6 +7,11 @@ export function useAutoQueue() {
   const isFetchingRef = useRef(false);
   const lastSessionIdRef = useRef<string | null>(null);
 
+  useEffect(() => {
+    if (!currentSong?.id) return;
+    RecommendationService.trackPlayedSong(currentSong.id);
+  }, [currentSong?.id]);
+
   // When the session terminates or a new one starts, clear cached prefetch data
   // and reset the fetch lock so the new session can immediately request songs.
   useEffect(() => {
@@ -44,11 +49,16 @@ export function useAutoQueue() {
 
       (async () => {
         try {
-          const songs = await RecommendationService.getOrFetchImmediate(seedSongId, capturedSessionId);
-
           const state = usePlayerStore.getState();
           // Async safety: discard if session changed
           if (!state.isAiRadioSession || state.aiRadioSessionId !== capturedSessionId) return;
+
+          const songs = await RecommendationService.getUniqueRecommendations(
+            seedSongId,
+            capturedSessionId,
+            state.queue.map(song => song.id),
+            10
+          );
 
           if (songs.length > 0) {
             state.appendToQueue(songs);

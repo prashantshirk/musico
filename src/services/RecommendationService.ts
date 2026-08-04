@@ -7,6 +7,10 @@ const SIMILAR_SONGS_ENDPOINT =
   (import.meta.env.VITE_SIMILAR_SONGS_ENDPOINT as string | undefined) ||
   '/api/ai-recommendations/rest/getSimilarSongs.view?u=admin&t=x&s=x&v=1.16.1&c=test&f=json';
 
+const RECOMMENDATION_BATCH_SIZE = 10;
+const REFILL_RETRY_ATTEMPTS = 5;
+const RECENT_HISTORY_LIMIT = 50;
+
 class LruCache<K, V> {
   private max: number;
   private cache: Map<K, V>;
@@ -44,10 +48,19 @@ class LruCache<K, V> {
 
 class RecommendationServiceClass {
   private cache = new LruCache<string, Song[]>(50);
+  private recentHistoryIds: string[] = [];
   private prefetchedSongs: Song[] = [];
   private prefetchSourceSongId: string | null = null;
   private prefetchStatus: 'idle' | 'loading' | 'success' | 'failed' = 'idle';
   private activeRequestPromise: Promise<Song[]> | null = null;
+
+  trackPlayedSong(songId: string) {
+    this.recentHistoryIds = this.recentHistoryIds.filter(id => id !== songId);
+    this.recentHistoryIds.push(songId);
+    if (this.recentHistoryIds.length > RECENT_HISTORY_LIMIT) {
+      this.recentHistoryIds.shift();
+    }
+  }
 
   clearSession() {
     this.prefetchedSongs = [];
@@ -59,7 +72,7 @@ class RecommendationServiceClass {
   private async fetchFromExternalServer(songId: string, sessionId: string): Promise<Song[]> {
     const url = new URL(SIMILAR_SONGS_ENDPOINT, window.location.origin);
     url.searchParams.set('id', songId);
-    url.searchParams.set('count', '10');
+    url.searchParams.set('count', String(RECOMMENDATION_BATCH_SIZE));
 
     const res = await fetch(url.toString());
     if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
@@ -88,6 +101,54 @@ class RecommendationServiceClass {
       this.cache.set(songId, songs);
     }
     return songs;
+  }
+
+  private pickUniqueSongs(songs: Song[], blockedIds: Set<string>, usedIds: Set<string>): Song[] {
+    const picked: Song[] = [];
+    for (const song of songs) {
+      if (!song?.id) continue;
+      if (blockedIds.has(song.id) || usedIds.has(song.id)) continue;
+      usedIds.add(song.id);
+      picked.push(song);
+    }
+    return picked;
+  }
+
+  async getUniqueRecommendations(
+    songId: string,
+    sessionId: string,
+    currentQueueSongIds: string[],
+    desiredCount = RECOMMENDATION_BATCH_SIZE
+  ): Promise<Song[]> {
+    const blockedIds = new Set<string>([...currentQueueSongIds, ...this.recentHistoryIds]);
+    const usedIds = new Set<string>();
+    const collected: Song[] = [];
+
+    const pushFrom = (songs: Song[]) => {
+      const unique = this.pickUniqueSongs(songs, blockedIds, usedIds);
+      if (unique.length > 0) collected.push(...unique);
+    };
+
+    // Prefer prefetched/cached results first to keep queue refill responsive.
+    const initial = await this.getOrFetchImmediate(songId, sessionId);
+    pushFrom(initial);
+
+    for (let attempt = 0; attempt < REFILL_RETRY_ATTEMPTS && collected.length < desiredCount; attempt++) {
+      const state = usePlayerStore.getState();
+      if (!state.isAiRadioSession || state.aiRadioSessionId !== sessionId) break;
+
+      try {
+        const fresh = await this.fetchFromExternalServer(songId, sessionId);
+        if (fresh.length > 0) {
+          this.cache.set(songId, fresh);
+        }
+        pushFrom(fresh);
+      } catch (error) {
+        console.error('[AI Radio] Retry fetch failed:', error);
+      }
+    }
+
+    return collected.slice(0, desiredCount);
   }
 
   async triggerPrefetch(songId: string, sessionId: string): Promise<void> {
