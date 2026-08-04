@@ -7,13 +7,6 @@ export function useAutoQueue() {
   const isFetchingRef = useRef(false);
   const lastSessionIdRef = useRef<string | null>(null);
 
-  // Track recently played songs for filtering
-  useEffect(() => {
-    if (currentSong) {
-      RecommendationService.addToRecentlyPlayed(currentSong.id);
-    }
-  }, [currentSong?.id]);
-
   // When the session terminates or a new one starts, clear cached prefetch data
   // and reset the fetch lock so the new session can immediately request songs.
   useEffect(() => {
@@ -57,9 +50,8 @@ export function useAutoQueue() {
           // Async safety: discard if session changed
           if (!state.isAiRadioSession || state.aiRadioSessionId !== capturedSessionId) return;
 
-          const filtered = RecommendationService.filterAndClean(songs, state.queue, state.currentSong);
-          if (filtered.length > 0) {
-            state.appendToQueue(filtered);
+          if (songs.length > 0) {
+            state.appendToQueue(songs);
           }
         } catch (error) {
           console.error('[AI Radio] Failed to refill queue:', error);

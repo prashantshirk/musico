@@ -1,12 +1,11 @@
 import { usePlayerStore } from '../store/playerStore';
-import { useAuthStore } from '../store/authStore';
-import { subsonicGet } from '../api/client';
-import { getRandomSongs } from '../api/browsing';
 import type { Song } from '../types';
 
-// If an external AI recommendation server is configured, use it.
-// Otherwise fall back to Navidrome's built-in getSimilarSongs2.
-const AI_BASE_URL = (import.meta.env.VITE_AI_RECOMMENDATION_BASE_URL as string | undefined) || '';
+// Use the same-origin proxy by default so browsers can reach the remote endpoint
+// without CORS or mixed-content failures.
+const SIMILAR_SONGS_ENDPOINT =
+  (import.meta.env.VITE_SIMILAR_SONGS_ENDPOINT as string | undefined) ||
+  '/api/ai-recommendations/rest/getSimilarSongs.view?u=admin&t=x&s=x&v=1.16.1&c=test&f=json';
 
 class LruCache<K, V> {
   private max: number;
@@ -45,20 +44,10 @@ class LruCache<K, V> {
 
 class RecommendationServiceClass {
   private cache = new LruCache<string, Song[]>(50);
-  private recentlyPlayedIds: string[] = [];
-  
   private prefetchedSongs: Song[] = [];
   private prefetchSourceSongId: string | null = null;
   private prefetchStatus: 'idle' | 'loading' | 'success' | 'failed' = 'idle';
   private activeRequestPromise: Promise<Song[]> | null = null;
-
-  addToRecentlyPlayed(songId: string) {
-    this.recentlyPlayedIds = this.recentlyPlayedIds.filter(id => id !== songId);
-    this.recentlyPlayedIds.push(songId);
-    if (this.recentlyPlayedIds.length > 20) {
-      this.recentlyPlayedIds.shift();
-    }
-  }
 
   clearSession() {
     this.prefetchedSongs = [];
@@ -68,11 +57,11 @@ class RecommendationServiceClass {
   }
 
   private async fetchFromExternalServer(songId: string, sessionId: string): Promise<Song[]> {
-    // The AI recommendation server is public — no auth required.
-    const params = new URLSearchParams({ id: songId, count: '15' });
-    const url = `${AI_BASE_URL.replace(/\/$/, '')}/rest/getSimilarSongs.view?${params}`;
+    const url = new URL(SIMILAR_SONGS_ENDPOINT, window.location.origin);
+    url.searchParams.set('id', songId);
+    url.searchParams.set('count', '10');
 
-    const res = await fetch(url);
+    const res = await fetch(url.toString());
     if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
 
     const state = usePlayerStore.getState();
@@ -85,36 +74,15 @@ class RecommendationServiceClass {
     if (!response) throw new Error('Unexpected response from server');
     if (response.status !== 'ok') throw new Error(response.error?.message || 'API error');
 
-    return response.similarSongs?.song || response.similarSongs2?.song || [];
-  }
-
-  private async fetchFromNavidrome(songId: string, sessionId: string): Promise<Song[]> {
-    const res = await subsonicGet<any>('getSimilarSongs2.view', { id: songId, count: 15 });
-
-    const state = usePlayerStore.getState();
-    if (!state.isAiRadioSession || state.aiRadioSessionId !== sessionId) {
-      throw new Error('Session changed during fetch');
-    }
-
-    const songs: Song[] = res.similarSongs2?.song || [];
-    if (songs.length > 0) return songs;
-
-    // Navidrome may return empty if Last.fm integration is not configured.
-    // Fall back to random songs so AI Radio always has content.
-    const random = await getRandomSongs(15);
-    return random as Song[];
+    const songs = response.similarSongs?.song || response.similarSongs2?.song || [];
+    return Array.isArray(songs) ? songs : [songs];
   }
 
   private async fetchRecommendations(songId: string, sessionId: string): Promise<Song[]> {
     const cached = this.cache.get(songId);
     if (cached) return cached;
 
-    let songs: Song[];
-    if (AI_BASE_URL) {
-      songs = await this.fetchFromExternalServer(songId, sessionId);
-    } else {
-      songs = await this.fetchFromNavidrome(songId, sessionId);
-    }
+    const songs = await this.fetchFromExternalServer(songId, sessionId);
 
     if (songs.length > 0) {
       this.cache.set(songId, songs);
@@ -176,19 +144,6 @@ class RecommendationServiceClass {
     } catch {
       return [];
     }
-  }
-
-  filterAndClean(songs: Song[], currentQueue: Song[], _currentSong: Song | null): Song[] {
-    const queueIds = new Set(currentQueue.map(s => s.id));
-    // recentlyPlayedIds includes the seed song, but the seed is already in queueIds
-    // so filtering by queueIds first means recently-played check never touches it.
-    const recentlyPlayedSet = new Set(this.recentlyPlayedIds);
-
-    return songs.filter(song => {
-      if (queueIds.has(song.id)) return false;         // already in queue
-      if (recentlyPlayedSet.has(song.id)) return false; // heard recently
-      return true;
-    });
   }
 }
 

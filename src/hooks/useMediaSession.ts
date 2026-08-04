@@ -46,11 +46,11 @@ export function useMediaSession() {
   }, [currentSong, togglePlay, next, previous, seek]);
 
   useEffect(() => {
-    if ('mediaSession' in navigator && currentSong && duration > 0) {
+    if ('mediaSession' in navigator && currentSong && duration > 0 && isPlaying) {
       try {
         navigator.mediaSession.setPositionState({
           duration: Math.max(0, duration),
-          playbackRate: isPlaying ? 1 : 0,
+          playbackRate: 1,
           position: Math.max(0, Math.min(progress, duration))
         });
       } catch (e) {
