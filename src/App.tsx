@@ -2,7 +2,7 @@ import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { useAuthStore } from "./store/authStore";
 import { usePlayerStore } from "./store/playerStore";
 import { useAutoQueue } from "./hooks/useAutoQueue";
@@ -12,16 +12,17 @@ import { MiniPlayer } from "./components/MiniPlayer";
 import { BottomNav } from "./components/BottomNav";
 import { InstallPrompt } from "./components/InstallPrompt";
 
-import Login from "./pages/Login";
-import Home from "./pages/Home";
-import Library from "./pages/Library";
-import Search from "./pages/Search";
-import AlbumDetail from "./pages/AlbumDetail";
-import ArtistDetail from "./pages/ArtistDetail";
-import PlaylistDetail from "./pages/PlaylistDetail";
-import NowPlaying from "./pages/NowPlaying";
-import Queue from "./pages/Queue";
-import NotFound from "./pages/not-found";
+// Route-level code splitting — each page chunk loads only when first visited
+const Login       = lazy(() => import('./pages/Login'));
+const Home        = lazy(() => import('./pages/Home'));
+const Library     = lazy(() => import('./pages/Library'));
+const Search      = lazy(() => import('./pages/Search'));
+const AlbumDetail = lazy(() => import('./pages/AlbumDetail'));
+const ArtistDetail  = lazy(() => import('./pages/ArtistDetail'));
+const PlaylistDetail = lazy(() => import('./pages/PlaylistDetail'));
+const NowPlaying  = lazy(() => import('./pages/NowPlaying'));
+const Queue       = lazy(() => import('./pages/Queue'));
+const NotFound    = lazy(() => import('./pages/not-found'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -82,23 +83,40 @@ function AppShell() {
     return <div className="min-h-screen bg-background" />;
   }
 
+  // Prefetch the Queue chunk (heaviest route: 17kB gz, contains dnd-kit) while the
+  // browser is idle after the initial page load. Falls back to setTimeout on Safari
+  // which doesn't implement requestIdleCallback.
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const prefetch = () => { import('./pages/Queue'); };
+    if ('requestIdleCallback' in window) {
+      const id = requestIdleCallback(prefetch, { timeout: 3000 });
+      return () => cancelIdleCallback(id);
+    } else {
+      const id = setTimeout(prefetch, 0);
+      return () => clearTimeout(id);
+    }
+  }, [isLoggedIn]);
+
   const isNowPlaying = location === '/now-playing';
   const showChrome = isLoggedIn && !isNowPlaying;
 
   return (
     <>
-      <Switch>
-        <Route path="/login" component={Login} />
-        <Route path="/home"><ProtectedRoute component={Home} /></Route>
-        <Route path="/library"><ProtectedRoute component={Library} /></Route>
-        <Route path="/search"><ProtectedRoute component={Search} /></Route>
-        <Route path="/album/:id"><ProtectedRoute component={AlbumDetail} /></Route>
-        <Route path="/artist/:id"><ProtectedRoute component={ArtistDetail} /></Route>
-        <Route path="/playlist/:id"><ProtectedRoute component={PlaylistDetail} /></Route>
-        <Route path="/now-playing"><ProtectedRoute component={NowPlaying} /></Route>
-        <Route path="/queue"><ProtectedRoute component={Queue} /></Route>
-        <Route component={NotFound} />
-      </Switch>
+      <Suspense fallback={<div className="min-h-screen bg-background" />}>
+        <Switch>
+          <Route path="/login" component={Login} />
+          <Route path="/home"><ProtectedRoute component={Home} /></Route>
+          <Route path="/library"><ProtectedRoute component={Library} /></Route>
+          <Route path="/search"><ProtectedRoute component={Search} /></Route>
+          <Route path="/album/:id"><ProtectedRoute component={AlbumDetail} /></Route>
+          <Route path="/artist/:id"><ProtectedRoute component={ArtistDetail} /></Route>
+          <Route path="/playlist/:id"><ProtectedRoute component={PlaylistDetail} /></Route>
+          <Route path="/now-playing"><ProtectedRoute component={NowPlaying} /></Route>
+          <Route path="/queue"><ProtectedRoute component={Queue} /></Route>
+          <Route component={NotFound} />
+        </Switch>
+      </Suspense>
 
       {showChrome && currentSong && <MiniPlayer />}
       {showChrome && <BottomNav />}

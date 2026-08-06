@@ -286,3 +286,21 @@
     inset: -1px;
   }
 }
+
+/* ── Viewport-height scroll containers ───────────────────────────────────────
+ * Two separate height declarations enable a cascade fallback:
+ *   1. Browsers that don't understand 'dvh' (Safari <16.4, older Android
+ *      WebView) parse and apply the first line, then fail to parse the second
+ *      and discard it — so they use 100vh.
+ *   2. Browsers that understand 'dvh' apply both lines; the second wins
+ *      (later declaration of same property, equal specificity).
+ *
+ * This is the same technique as `height: 100vh; height: 100svh;` used by
+ * MDN and Bootstrap 5.3+. It cannot be expressed via a single inline style
+ * object (React serialises it as one declaration, so only the last value
+ * survives), hence the CSS class.
+ */
+.scroll-dvh {
+  height: calc(100vh - 200px);  /* fallback for browsers without dvh support */
+  height: calc(100dvh - 200px); /* overrides above on supporting browsers    */
+}

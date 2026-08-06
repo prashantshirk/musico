@@ -59,6 +59,8 @@ export default function PlaylistDetail() {
             <img 
               src={coverArtUrl(playlist.id, 500)} 
               alt={playlist.name}
+              loading="lazy"
+              decoding="async"
               className="w-56 h-56 md:w-64 md:h-64 rounded-md shadow-2xl"
             />
           ) : (

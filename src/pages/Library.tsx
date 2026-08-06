@@ -63,21 +63,78 @@ function ArtistsTab() {
     queryFn: getArtists,
   });
 
+  const parentRef = useRef<HTMLDivElement>(null);
+  const estimateSize = useCallback((i: number) => {
+    if (!data) return 200;
+    const group = data[i];
+    const artistCount = group?.artist?.length || 0;
+    return 52 + Math.ceil(artistCount / 3) * 140 + 32;
+  }, [data]);
+
+  const rowVirtualizer = useVirtual({
+    size: data?.length || 0,
+    parentRef,
+    estimateSize,
+    overscan: 3,
+  });
+
+  // Derive the letter currently at the top of the visible range for the sticky header.
+  const firstVisibleIndex = rowVirtualizer.virtualItems[0]?.index ?? 0;
+  const stickyLetter = data?.[firstVisibleIndex]?.name ?? '';
+
   if (isLoading) return <LoadingGrid type="artist" />;
   if (!data?.length) return <EmptyState message="No artists found" />;
 
   return (
-    <div className="flex flex-col gap-8">
-      {data.map((index: any) => (
-        <div key={index.name}>
-          <h2 className="text-xl font-syne font-bold mb-4 sticky top-[104px] bg-background/90 backdrop-blur py-2 z-10">{index.name}</h2>
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
-            {index.artist?.map((artist: any) => (
-              <ArtistCard key={artist.id} artist={artist} />
-            ))}
-          </div>
+    <div className="relative">
+      {/* Floating sticky header — shows the topmost visible letter group */}
+      {stickyLetter && (
+        <div
+          className="sticky top-0 z-10 bg-background/90 backdrop-blur py-2 px-0 pointer-events-none"
+          aria-hidden="true"
+        >
+          <h2 className="text-xl font-syne font-bold text-foreground">{stickyLetter}</h2>
         </div>
-      ))}
+      )}
+
+      <div
+        ref={parentRef}
+        className="scroll-dvh overflow-auto w-full hide-scrollbar"
+      >
+        <div
+          className="w-full relative"
+          style={{ height: `${rowVirtualizer.totalSize}px` }}
+        >
+          {rowVirtualizer.virtualItems.map((virtualRow) => {
+            const group = data[virtualRow.index];
+            if (!group) return null;
+            // The sticky header already shows this letter when this group is
+            // topmost. Render a spacer div of the same height to prevent the
+            // grid from jumping up — but suppress the visible text.
+            const isActiveGroup = virtualRow.index === firstVisibleIndex;
+            return (
+              <div
+                key={group.name}
+                className="absolute top-0 left-0 w-full"
+                style={{
+                  height: `${virtualRow.size}px`,
+                  transform: `translateY(${virtualRow.start}px)`,
+                }}
+              >
+                {isActiveGroup
+                  ? <div className="mb-4 py-2" style={{ height: '2rem' }} aria-hidden="true" />
+                  : <h2 className="text-xl font-syne font-bold mb-4 py-2 text-foreground">{group.name}</h2>
+                }
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
+                  {group.artist?.map((artist: any) => (
+                    <ArtistCard key={artist.id} artist={artist} />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
@@ -88,14 +145,53 @@ function AlbumsTab() {
     queryFn: () => getAlbumList('alphabeticalByName', 100),
   });
 
+  const parentRef = useRef<HTMLDivElement>(null);
+  // Grid: 2 cols on mobile. Virtualise by row (each row = 2 albums).
+  const COLS = 2;
+  const albums = data || [];
+  const rowCount = Math.ceil(albums.length / COLS);
+  const estimateSize = useCallback(() => 200, []); // approx card height + gap
+
+  const rowVirtualizer = useVirtual({
+    size: rowCount,
+    parentRef,
+    estimateSize,
+    overscan: 5,
+  });
+
   if (isLoading) return <LoadingGrid type="album" />;
   if (!data?.length) return <EmptyState message="No albums found" />;
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-      {data.map((album: any) => (
-        <AlbumCard key={album.id} album={album} />
-      ))}
+    <div
+      ref={parentRef}
+      className="scroll-dvh overflow-auto w-full hide-scrollbar"
+    >
+      <div
+        className="w-full relative"
+        style={{ height: `${rowVirtualizer.totalSize}px` }}
+      >
+        {rowVirtualizer.virtualItems.map((virtualRow) => {
+          const startIdx = virtualRow.index * COLS;
+          const rowAlbums = albums.slice(startIdx, startIdx + COLS);
+          return (
+            <div
+              key={virtualRow.index}
+              className="absolute top-0 left-0 w-full"
+              style={{
+                height: `${virtualRow.size}px`,
+                transform: `translateY(${virtualRow.start}px)`,
+              }}
+            >
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 h-full">
+                {rowAlbums.map((album: any) => (
+                  <AlbumCard key={album.id} album={album} />
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -182,6 +278,8 @@ function PlaylistsTab() {
               <img
                 src={coverArtUrl(playlist.id, 128)}
                 alt={playlist.name}
+                loading="lazy"
+                decoding="async"
                 className="w-14 h-14 rounded-md object-cover bg-muted flex-shrink-0"
               />
             ) : (
