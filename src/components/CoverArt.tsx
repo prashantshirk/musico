@@ -11,14 +11,29 @@ interface CoverArtProps {
   size?: number;
 }
 
+// Global set of URLs that have successfully loaded during this session.
+// Prevents flash-to-invisible on component remounts / React Query refetches.
+const loadedUrls = new Set<string>();
+
 /**
  * Progressive cover art loader with:
- * - IntersectionObserver: only load images visible on screen
- * - Crossfade: smooth transition when full res loads
+ * - Session-level loaded URL cache (instant display on remount)
+ * - Crossfade: smooth transition when full res loads first time
  */
 export const CoverArt = memo(function CoverArt({ id, alt, className = '', size = 300 }: CoverArtProps) {
-  const [loaded, setLoaded] = useState(false);
+  const fullUrl = id ? coverArtUrl(id, size) : '';
+  const [loaded, setLoaded] = useState(() => loadedUrls.has(fullUrl));
   const [error, setError] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  useEffect(() => {
+    if (loadedUrls.has(fullUrl)) {
+      setLoaded(true);
+    } else if (imgRef.current?.complete && imgRef.current.naturalWidth > 0) {
+      loadedUrls.add(fullUrl);
+      setLoaded(true);
+    }
+  }, [fullUrl]);
 
   if (!id || error) {
     return (
@@ -28,20 +43,22 @@ export const CoverArt = memo(function CoverArt({ id, alt, className = '', size =
     );
   }
 
-  const fullUrl = coverArtUrl(id, size);
-
   return (
     <div className={`relative overflow-hidden bg-muted ${className}`}>
       {/* Full-resolution image — native lazy load */}
       <img
+        ref={imgRef}
         src={fullUrl}
         alt={alt}
         loading="lazy"
         decoding="async"
-        onLoad={() => setLoaded(true)}
+        onLoad={() => {
+          if (fullUrl) loadedUrls.add(fullUrl);
+          setLoaded(true);
+        }}
         onError={() => setError(true)}
         className="absolute inset-0 w-full h-full object-cover"
-        style={{ opacity: loaded ? 1 : 0, transition: 'opacity 0.4s ease' }}
+        style={{ opacity: loaded ? 1 : 0, transition: 'opacity 0.3s ease' }}
       />
       
       {/* Placeholder Icon while loading */}
@@ -53,4 +70,5 @@ export const CoverArt = memo(function CoverArt({ id, alt, className = '', size =
     </div>
   );
 });
+
 

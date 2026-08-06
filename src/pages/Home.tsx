@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { getAlbumList, getStarred, getRandomSongs } from '../api/browsing';
 import { AlbumCard } from '../components/AlbumCard';
 import { SongRow } from '../components/SongRow';
@@ -20,23 +20,27 @@ export default function Home() {
   const { data: recentAlbums, isLoading: loadingRecent } = useQuery({
     queryKey: ['albums', 'recent'],
     queryFn: () => getAlbumList('recent', 8),
+    placeholderData: keepPreviousData,
   });
 
   const { data: newAlbums, isLoading: loadingNew } = useQuery({
     queryKey: ['albums', 'newest'],
     queryFn: () => getAlbumList('newest', 8),
+    placeholderData: keepPreviousData,
   });
 
   const { data: frequentAlbums, isLoading: loadingFrequent } = useQuery({
     queryKey: ['albums', 'frequent'],
     queryFn: () => getAlbumList('frequent', 8),
     enabled: loadExtraSections,
+    placeholderData: keepPreviousData,
   });
 
   const { data: starred, isLoading: loadingStarred } = useQuery({
     queryKey: ['starred'],
     queryFn: getStarred,
     enabled: loadExtraSections,
+    placeholderData: keepPreviousData,
   });
 
   const { data: randomSongs, isLoading: loadingRandom } = useQuery({
@@ -44,6 +48,7 @@ export default function Home() {
     queryFn: () => getRandomSongs(8),
     staleTime: 1000 * 60 * 5, // Keep random mix for 5 mins
     enabled: loadExtraSections,
+    placeholderData: keepPreviousData,
   });
 
   const toggleTheme = () => {
@@ -58,18 +63,18 @@ export default function Home() {
 
   const AlbumRow = ({ albums, loading }: { albums?: any[], loading: boolean }) => (
     <div className="flex overflow-x-auto px-4 pb-4 gap-4 hide-scrollbar">
-      {loading ? (
+      {albums?.length ? (
+        albums.map(album => (
+          <div key={album.id} className="flex-shrink-0">
+            <AlbumCard album={album} />
+          </div>
+        ))
+      ) : loading ? (
         Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="flex flex-col gap-2 w-32 md:w-40 lg:w-48 flex-shrink-0 animate-pulse">
             <div className="aspect-square bg-muted rounded-md" />
             <div className="h-4 bg-muted rounded w-3/4" />
             <div className="h-3 bg-muted rounded w-1/2" />
-          </div>
-        ))
-      ) : albums?.length ? (
-        albums.map(album => (
-          <div key={album.id} className="flex-shrink-0">
-            <AlbumCard album={album} />
           </div>
         ))
       ) : (
@@ -105,7 +110,7 @@ export default function Home() {
           <AlbumRow albums={newAlbums} loading={loadingNew} />
         </section>
 
-        {loadExtraSections && loadingStarred && (
+        {loadExtraSections && loadingStarred && !starred?.song?.length && (
           <section className="px-4">
             <SectionTitle>Starred Songs</SectionTitle>
             <div className="h-24 bg-muted/50 rounded-md animate-pulse" />
@@ -134,7 +139,7 @@ export default function Home() {
           </section>
         )}
 
-        {loadExtraSections && loadingRandom && (
+        {loadExtraSections && loadingRandom && !randomSongs?.length && (
           <section className="px-4">
             <SectionTitle>Random Mix</SectionTitle>
             <div className="h-24 bg-muted/50 rounded-md animate-pulse" />

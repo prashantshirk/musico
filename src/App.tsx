@@ -80,7 +80,7 @@ function AppShell() {
   useMediaSession();
 
   if (!hasHydrated) {
-    return <div className="min-h-screen bg-background" />;
+    return <main className="min-h-screen bg-background" />;
   }
 
   // Prefetch the Queue chunk (heaviest route: 17kB gz, contains dnd-kit) while the

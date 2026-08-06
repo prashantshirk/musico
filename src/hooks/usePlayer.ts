@@ -59,6 +59,7 @@ function schedulePreload() {
       if (preloaderHowl) { preloaderHowl.unload(); preloaderHowl = null; }
       preloaderHowl = new Howl({
         src: [streamUrl(nextSong.id)],
+        format: ['mp3'],
         html5: true,
         volume: 0,
         preload: true,
@@ -170,6 +171,7 @@ function _playSong(song: Song, queue?: Song[], startRefillSession = false, skipS
   
   const howl = new Howl({
     src: [url],
+    format: ['mp3'],
     html5: true,
     preload: true,
     volume: getStore().isMuted ? 0 : getStore().volume,

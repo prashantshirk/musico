@@ -29,7 +29,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background">
+    <main className="min-h-screen flex flex-col items-center justify-center p-6 bg-background">
       <div className="w-full max-w-sm space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
         <div className="flex flex-col items-center gap-4">
           <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
@@ -83,6 +83,6 @@ export default function Login() {
           </button>
         </form>
       </div>
-    </div>
+    </main>
   );
 }
