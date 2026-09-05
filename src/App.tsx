@@ -11,6 +11,7 @@ import { useMediaSession } from "./hooks/useMediaSession";
 import { MiniPlayer } from "./components/MiniPlayer";
 import { BottomNav } from "./components/BottomNav";
 import { InstallPrompt } from "./components/InstallPrompt";
+import { SongActionSheet } from "./components/SongActionSheet";
 
 // Route-level code splitting — each page chunk loads only when first visited
 const Login       = lazy(() => import('./pages/Login'));
@@ -129,6 +130,13 @@ function AppShell() {
           route, so on the full-screen player it sat directly on top of the
           transport controls and swallowed the taps. */}
       {showChrome && <InstallPrompt />}
+
+      {/* Deliberately outside `showChrome`: the full-screen player opens this too.
+          It lives up here rather than inside SongRow because song lists are
+          virtualized — an overlay that unmounts with its row while still closing
+          leaves `pointer-events: none` on <body>, which is what made taps stop
+          working. It renders nothing until a song is pushed into its store. */}
+      {isLoggedIn && <SongActionSheet />}
     </>
   );
 }

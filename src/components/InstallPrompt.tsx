@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Download, X, Share } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { Button } from './ui/button';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -93,63 +94,64 @@ export function InstallPrompt() {
       className="fixed left-4 right-4 z-30 animate-in slide-in-from-bottom-6 duration-500"
       style={{ bottom: 'calc(9rem + env(safe-area-inset-bottom, 0px))' }}
     >
-      <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-black/60 p-4 backdrop-blur-xl shadow-2xl">
+      {/* Was a permanently dark card — `bg-black/60` with `text-white` — which
+          inverted against the rest of the app whenever the light theme was on.
+          `bg-card` keeps it a raised panel in both themes. */}
+      <div className="relative overflow-hidden rounded-2xl border border-border bg-card/95 p-4 shadow-2xl backdrop-blur-xl">
         {/* Glow effect */}
         <div className="absolute -left-16 -top-16 -z-10 h-32 w-32 rounded-full bg-primary/20 blur-2xl" />
 
-        <div className="flex gap-4">
+        <div className="flex gap-3">
           {/* T-Rex Icon */}
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/5 border border-white/10 overflow-hidden">
-            <img 
-              src="/favicon.png" 
-              alt="Musico T-Rex" 
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-muted">
+            <img
+              src="/favicon.png"
+              alt=""
+              aria-hidden="true"
               className="h-9 w-9 object-contain"
             />
           </div>
 
           {/* Details */}
-          <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-white text-base">Install Musico</h3>
-            <p className="text-white/60 text-xs mt-0.5 leading-relaxed">
-              {isIOS 
+          <div className="min-w-0 flex-1">
+            <h3 className="text-base font-semibold text-foreground">Install Musico</h3>
+            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+              {isIOS
                 ? "Tap Share (bottom browser menu) then select 'Add to Home Screen' for background playback."
                 : "Install the web app to get locked screen controls and high quality playback."
               }
             </p>
           </div>
 
-          {/* Close button */}
-          <button 
+          {/* Close button. Was a 24px box — below the 44px minimum, and the
+              hardest control on this card to hit given what is behind it. */}
+          <button
+            type="button"
             onClick={handleDismiss}
-            className="h-6 w-6 text-white/40 hover:text-white/80 transition-colors flex items-center justify-center"
+            aria-label="Dismiss install prompt"
+            className="-mr-1 -mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground active:text-foreground"
           >
-            <X size={18} />
+            <X size={20} aria-hidden="true" />
           </button>
         </div>
 
         {/* Action Button for Android/Chrome */}
         {!isIOS && deferredPrompt && (
-          <div className="mt-3 flex gap-2 justify-end">
-            <button
-              onClick={handleDismiss}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white/60 hover:text-white hover:bg-white/5 transition-colors"
-            >
+          <div className="mt-3 flex justify-end gap-2">
+            <Button variant="ghost" onClick={handleDismiss} className="min-h-11 px-4 text-xs font-semibold">
               Maybe later
-            </button>
-            <button
-              onClick={handleInstallClick}
-              className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
-            >
-              <Download size={14} />
+            </Button>
+            <Button onClick={handleInstallClick} className="min-h-11 gap-1.5 px-4 text-xs font-bold [&_svg]:size-4">
+              <Download aria-hidden="true" />
               Install
-            </button>
+            </Button>
           </div>
         )}
 
         {/* Action Hint for iOS */}
         {isIOS && (
-          <div className="mt-3 flex items-center gap-2 text-white/50 text-[10px] uppercase font-bold tracking-wider border-t border-white/5 pt-2.5">
-            <Share size={12} className="text-primary animate-pulse" />
+          <div className="mt-3 flex items-center gap-2 border-t border-border pt-2.5 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            <Share size={16} className="text-primary" aria-hidden="true" />
             <span>Tap Share &rarr; Add to Home Screen</span>
           </div>
         )}

@@ -96,6 +96,14 @@
   --popover: 0 0% 100%;
   --popover-foreground: 0 0% 10%;
   --popover-border: 0 0% 0% / 0.12;
+
+  /* Overlay tints for the elevate system defined further down. Every shadcn
+   * Button, Item and Toggle in this project asks for these two variables on
+   * hover/press — they were never declared, so `background-color: var(--elevate-1)`
+   * resolved to nothing and the components had no interaction feedback at all.
+   * That absence is why hand-rolled `active:scale-*` kept getting added instead. */
+  --elevate-1: rgba(0, 0, 0, 0.04);
+  --elevate-2: rgba(0, 0, 0, 0.08);
   
   --app-font-sans: 'Inter', system-ui, sans-serif;
   --app-font-serif: Georgia, serif;
@@ -134,6 +142,10 @@
   --popover: 0 0% 10%;
   --popover-foreground: 0 0% 100%;
   --popover-border: 0 0% 100% / 0.08;
+
+  /* Light tints on dark surfaces — the inverse of the light-theme values. */
+  --elevate-1: rgba(255, 255, 255, 0.05);
+  --elevate-2: rgba(255, 255, 255, 0.10);
 }
 
 @layer base {

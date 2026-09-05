@@ -20,13 +20,18 @@ const DrawerPortal = DrawerPrimitive.Portal
 
 const DrawerClose = DrawerPrimitive.Close
 
+/* z-70, not the stock z-50. The app's own layers are BottomNav z-50, MiniPlayer
+ * z-40 and the full-screen player z-60 — and portalling to <body> does not win a
+ * stacking contest, it only leaves the element free to lose one. At z-50 a sheet
+ * opened from the player rendered *behind* it, which looked exactly like a dead
+ * button. Toasts stay above everything at z-100. */
 const DrawerOverlay = React.forwardRef<
   React.ElementRef<typeof DrawerPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Overlay>
 >(({ className, ...props }, ref) => (
   <DrawerPrimitive.Overlay
     ref={ref}
-    className={cn("fixed inset-0 z-50 bg-black/80", className)}
+    className={cn("fixed inset-0 z-[70] bg-black/80", className)}
     {...props}
   />
 ))
@@ -41,7 +46,7 @@ const DrawerContent = React.forwardRef<
     <DrawerPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-[10px] border bg-background",
+        "fixed inset-x-0 bottom-0 z-[70] mt-24 flex h-auto flex-col rounded-t-[10px] border bg-background",
         className
       )}
       {...props}

@@ -1,34 +1,50 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getSyncedLyrics, getLyrics } from '../api/lyrics';
 import { usePlayerStore } from '../store/playerStore';
 import { SyncedLyricsLine } from '../types';
-import { X } from 'lucide-react';
+import { cn } from '../lib/utils';
+import { Skeleton } from './ui/skeleton';
+import { Drawer, DrawerContent, DrawerTitle } from './ui/drawer';
 
 interface LyricsPanelProps {
-  onClose: () => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
-export function LyricsPanel({ onClose }: LyricsPanelProps) {
-  const { currentSong, progress } = usePlayerStore();
-  
+/* Widths chosen to look like sung lines rather than a paragraph — a uniform
+ * stack of bars reads as a table, not a lyric. */
+const SKELETON_WIDTHS = ['72%', '54%', '81%', '46%', '68%', '58%', '77%'];
+
+export function LyricsPanel({ open, onOpenChange }: LyricsPanelProps) {
+  /* Narrow selectors: destructuring the whole store made this component
+   * re-render on every unrelated write, not just the progress tick it needs.
+   *
+   * The panel now stays mounted so vaul can run its own close transition, so the
+   * progress read is gated on `open` — the selector still runs on every tick,
+   * but returns a stable 0 while the panel is shut, which is not a re-render. */
+  const currentSong = usePlayerStore((state) => state.currentSong);
+  const progress = usePlayerStore((state) => (open ? state.progress : 0));
+
   const { data: syncedLyrics, isLoading: isLoadingSynced } = useQuery({
     queryKey: ['lyrics', 'synced', currentSong?.id],
     queryFn: () => currentSong ? getSyncedLyrics(currentSong.artist, currentSong.title, currentSong.duration) : Promise.resolve([]),
-    enabled: !!currentSong,
+    // Only when the panel is actually open: mounted-but-shut must not fetch
+    // lyrics for every track that plays.
+    enabled: !!currentSong && open,
   });
 
   const { data: unsyncedLyrics, isLoading: isLoadingUnsynced } = useQuery({
     queryKey: ['lyrics', 'unsynced', currentSong?.artist, currentSong?.title],
     queryFn: () => (currentSong ? getLyrics(currentSong.artist, currentSong.title) : Promise.resolve(null)),
-    enabled: !!currentSong && (!syncedLyrics || syncedLyrics.length === 0) && !isLoadingSynced,
+    enabled: !!currentSong && open && (!syncedLyrics || syncedLyrics.length === 0) && !isLoadingSynced,
   });
 
   const isLoading = isLoadingSynced || isLoadingUnsynced;
 
   let activeIndex = -1;
   const lines = syncedLyrics || [];
-  
+
   if (lines.length > 0) {
     const msProgress = progress * 1000;
     activeIndex = lines.findIndex((line: SyncedLyricsLine, i: number) => {
@@ -39,68 +55,75 @@ export function LyricsPanel({ onClose }: LyricsPanelProps) {
     });
   }
 
-  // Scroll active line into view
+  const scrollerRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    if (activeIndex !== -1) {
-      const el = document.getElementById(`lyric-line-${activeIndex}`);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }
+    if (activeIndex === -1) return;
+    const scroller = scrollerRef.current;
+    const line = scroller?.querySelector<HTMLElement>(`[data-line="${activeIndex}"]`);
+    if (!scroller || !line) return;
+
+    /* Scoped to the scroller rather than scrollIntoView on the document: the
+     * panel is portalled, and a document-level scroll would also drag whatever
+     * is mounted behind it. */
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    scroller.scrollTo({
+      top: line.offsetTop - scroller.clientHeight / 2 + line.offsetHeight / 2,
+      behavior: reduceMotion ? 'auto' : 'smooth',
+    });
   }, [activeIndex]);
 
   return (
-    <div
-      className="absolute inset-0 bg-background/95 backdrop-blur-xl z-50 flex flex-col pb-8 px-6 animate-in slide-in-from-bottom-full duration-300"
-      style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 3rem)' }}
-      onTouchStart={(e) => e.stopPropagation()}
-      onTouchMove={(e) => e.stopPropagation()}
-      onTouchEnd={(e) => e.stopPropagation()}
-    >
-      {/* Absolutely positioned, so the container's padding doesn't apply — at a
-          flat top-4 this sat under the notch and was untappable. */}
-      <button
-        onClick={onClose}
-        aria-label="Close lyrics"
-        className="absolute right-4 flex h-11 w-11 items-center justify-center text-foreground/60 hover:text-foreground bg-foreground/5 rounded-full"
-        style={{ top: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)' }}
-      >
-        <X size={24} />
-      </button>
+    <Drawer open={open} onOpenChange={onOpenChange} shouldScaleBackground={false}>
+      <DrawerContent className="h-[92vh] border-border bg-background">
+        <DrawerTitle className="sr-only">Lyrics</DrawerTitle>
 
-      <div className="flex-1 overflow-y-auto pt-8 pb-32 mask-image-fade hide-scrollbar">
-        {isLoading ? (
-          <div className="flex justify-center items-center h-full">
-            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-          </div>
-        ) : lines.length > 0 ? (
-          <div className="flex flex-col gap-6 text-center max-w-2xl mx-auto">
-            {lines.map((line: SyncedLyricsLine, i: number) => (
-              <p 
-                key={i} 
-                id={`lyric-line-${i}`}
-                className={`text-2xl md:text-3xl lg:text-4xl font-syne font-bold transition-all duration-300 ${
-                  i === activeIndex 
-                    ? 'text-foreground scale-105' 
-                    : i < activeIndex 
-                      ? 'text-foreground/30' 
-                      : 'text-foreground/40'
-                }`}
-              >
-                {line.value || '♪'}
-              </p>
-            ))}
-          </div>
-        ) : unsyncedLyrics?.value ? (
-          <div className="whitespace-pre-wrap text-xl md:text-2xl font-syne font-semibold text-foreground/80 max-w-2xl mx-auto text-center leading-relaxed">
-            {unsyncedLyrics.value}
-          </div>
-        ) : (
-          <div className="flex justify-center items-center h-full text-muted-foreground text-xl font-syne">
-            No lyrics found
-          </div>
-        )}
-      </div>
-    </div>
+        <div
+          ref={scrollerRef}
+          className="hide-scrollbar flex-1 overflow-y-auto px-6 pb-24 pt-8"
+          /* The fade was previously a `mask-image-fade` class that does not
+             exist in the stylesheet, so the lyrics ran hard into the drag
+             handle. Declared here instead of relying on a phantom utility. */
+          style={{
+            maskImage: 'linear-gradient(to bottom, transparent, black 12%, black 82%, transparent)',
+            WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 12%, black 82%, transparent)',
+          }}
+        >
+          {isLoading ? (
+            <div className="mx-auto flex max-w-2xl flex-col items-center gap-6" aria-label="Loading lyrics">
+              {SKELETON_WIDTHS.map((width, i) => (
+                <Skeleton key={i} className="h-7 rounded-lg" style={{ width }} />
+              ))}
+            </div>
+          ) : lines.length > 0 ? (
+            <div className="mx-auto flex max-w-2xl flex-col gap-6 text-center">
+              {lines.map((line: SyncedLyricsLine, i: number) => (
+                <p
+                  key={i}
+                  data-line={i}
+                  aria-current={i === activeIndex ? 'true' : undefined}
+                  /* Opacity and weight carry the active line; scaling it used to
+                     nudge every line below it on each beat. */
+                  className={cn(
+                    'font-syne text-2xl font-bold transition-colors duration-300 md:text-3xl lg:text-4xl',
+                    i === activeIndex ? 'text-foreground' : 'text-muted-foreground'
+                  )}
+                >
+                  {line.value || '♪'}
+                </p>
+              ))}
+            </div>
+          ) : unsyncedLyrics?.value ? (
+            <div className="mx-auto max-w-2xl whitespace-pre-wrap text-center font-syne text-xl font-semibold leading-relaxed text-foreground md:text-2xl">
+              {unsyncedLyrics.value}
+            </div>
+          ) : (
+            <p className="pt-16 text-center font-syne text-xl text-muted-foreground">
+              No lyrics found
+            </p>
+          )}
+        </div>
+      </DrawerContent>
+    </Drawer>
   );
 }

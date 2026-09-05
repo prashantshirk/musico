@@ -1,153 +1,195 @@
-import { useState, useRef, useEffect } from 'react';
-import { usePlayerStore } from '../store/playerStore';
-import { SongRow } from '../components/SongRow';
-import { ArrowLeft, Trash2, Star, X } from 'lucide-react';
-import { useLocation } from 'wouter';
-import { usePlayer } from '../hooks/usePlayer';
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { useEffect, useRef, useState } from 'react';
+import { ArrowLeft, GripVertical, Star, Trash2 } from 'lucide-react';
+import {
+  DndContext, closestCenter, KeyboardSensor, PointerSensor,
+  useSensor, useSensors, DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove, SortableContext, sortableKeyboardCoordinates,
+  verticalListSortingStrategy, useSortable,
+} from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { usePlayerStore } from '../store/playerStore';
+import { usePlayer } from '../hooks/usePlayer';
+import { SongRow } from '../components/SongRow';
 import { Song } from '../types';
 import { star, unstar } from '../api/annotation';
+import { cn } from '../lib/utils';
+import { Button } from '../components/ui/button';
+import {
+  Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle,
+} from '../components/ui/drawer';
 
 export default function Queue() {
-  const [, setLocation] = useLocation();
-  const { queue, queueIndex, removeFromQueue, reorderQueue, clearQueue } = usePlayerStore();
+  /* Narrow selectors. Destructuring the store subscribed this page to every
+   * write including the four-times-a-second progress tick, which re-rendered the
+   * whole queue and every row in it while a track played. */
+  const queue = usePlayerStore(state => state.queue);
+  const queueIndex = usePlayerStore(state => state.queueIndex);
+  const removeFromQueue = usePlayerStore(state => state.removeFromQueue);
+  const reorderQueue = usePlayerStore(state => state.reorderQueue);
+  const clearQueue = usePlayerStore(state => state.clearQueue);
+
   const { skipTo } = usePlayer();
-  const [selectedSong, setSelectedSong] = useState<{ song: Song, index: number } | null>(null);
+  const [selected, setSelected] = useState<{ song: Song; index: number } | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (over && active.id !== over.id) {
-      const oldIndex = queue.findIndex(s => s.id === active.id);
-      const newIndex = queue.findIndex(s => s.id === over.id);
-      reorderQueue(arrayMove(queue, oldIndex, newIndex));
-    }
+  const handleDragEnd = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return;
+    const from = queue.findIndex(s => s.id === active.id);
+    const to = queue.findIndex(s => s.id === over.id);
+    if (from === -1 || to === -1) return;
+    reorderQueue(arrayMove(queue, from, to));
   };
 
-  const handleStarToggle = async () => {
-    if (!selectedSong) return;
-    if (selectedSong.song.starred) {
-      await unstar(selectedSong.song.id, 'song');
-      // In a real app we'd want to update the store here, but we rely on a refetch or local state mutation.
-      // Since this is a simple PWA, we'll just close the modal for now.
-    } else {
-      await star(selectedSong.song.id, 'song');
-    }
-    setSelectedSong(null);
-  };
+  const upNext = queue.slice(queueIndex + 1);
 
   return (
-    <div className="min-h-screen bg-background pb-32 animate-in fade-in duration-300">
-      <header className="pt-safe sticky top-0 bg-background/95 backdrop-blur-xl z-20 border-b border-border p-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <button onClick={() => window.history.back()} className="text-foreground">
-            <ArrowLeft size={24} />
+    <div className="min-h-screen bg-background pb-32">
+      <header className="pt-safe sticky top-0 z-20 flex items-center justify-between gap-2 border-b border-border bg-background/95 px-2 py-2 backdrop-blur-xl">
+        <div className="flex min-w-0 items-center gap-1">
+          <button
+            type="button"
+            onClick={() => window.history.back()}
+            aria-label="Back"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:text-foreground/70"
+          >
+            <ArrowLeft size={24} aria-hidden="true" />
           </button>
-          <h1 className="text-xl font-syne font-bold text-foreground">Up Next</h1>
+          <h1 className="truncate font-syne text-xl font-bold text-foreground">Up Next</h1>
         </div>
-        <button 
+        <Button
+          variant="ghost"
           onClick={clearQueue}
-          className="text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
+          disabled={queue.length === 0}
+          className="min-h-11 shrink-0 px-4 text-sm font-semibold text-muted-foreground"
         >
           Clear
-        </button>
+        </Button>
       </header>
 
-      <main className="p-4 flex flex-col gap-8 max-w-2xl mx-auto">
+      <main className="mx-auto flex max-w-2xl flex-col gap-8 p-4">
         {queue[queueIndex] && (
           <section>
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-2">Now Playing</h2>
-            <div className="bg-white/5 rounded-lg border border-border/50">
+            <h2 className="mb-2 px-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              Now playing
+            </h2>
+            <div className="rounded-lg border border-border bg-muted/40">
               <SongRow song={queue[queueIndex]} />
             </div>
           </section>
         )}
 
-        {queue.length > queueIndex + 1 && (
+        {upNext.length > 0 && (
           <section>
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-2">Next In Queue</h2>
+            <div className="mb-2 flex items-baseline justify-between px-2">
+              <h2 className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                Next in queue
+              </h2>
+              <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+                {upNext.length}
+              </span>
+            </div>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <SortableContext items={queue.slice(queueIndex + 1).map(s => s.id)} strategy={verticalListSortingStrategy}>
-                <div className="flex flex-col gap-1">
-                  {queue.slice(queueIndex + 1).map((song, i) => {
+              <SortableContext items={upNext.map(s => s.id)} strategy={verticalListSortingStrategy}>
+                <ul className="flex flex-col gap-1">
+                  {upNext.map((song, i) => {
                     const actualIndex = queueIndex + 1 + i;
                     return (
-                      <SortableSongRow 
-                        key={song.id} 
-                        song={song} 
-                        index={actualIndex}
+                      <SortableSongRow
+                        key={song.id}
+                        song={song}
                         onRemove={() => removeFromQueue(actualIndex)}
                         onPlay={() => skipTo(actualIndex)}
-                        onLongPress={() => setSelectedSong({ song, index: actualIndex })}
+                        onLongPress={() => setSelected({ song, index: actualIndex })}
                       />
                     );
                   })}
-                </div>
+                </ul>
               </SortableContext>
             </DndContext>
           </section>
         )}
+
+        {queue.length === 0 && (
+          <p className="pt-24 text-center text-muted-foreground">Nothing queued.</p>
+        )}
       </main>
 
-      {/* Action sheet. Sits above the bottom nav (z-50), which shares a stacking
-          level with it and, being later in the DOM, used to paint over the
-          sheet's last row and swallow its taps. */}
-      {selectedSong && (
-        <div
-          className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-end animate-in fade-in duration-200"
-          onClick={() => setSelectedSong(null)}
-          onTouchStart={(e) => e.stopPropagation()}
-        >
-          <div 
-            className="w-full bg-[#1a1a1a] rounded-t-2xl p-6 pb-safe animate-in slide-in-from-bottom-full duration-300"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex flex-col min-w-0 pr-4">
-                <h3 className="text-lg font-bold text-white truncate">{selectedSong.song.title}</h3>
-                <p className="text-sm text-white/60 truncate">{selectedSong.song.artist}</p>
+      {/* A real bottom sheet rather than a fixed div at z-[60]. Because it
+          portals to the body it no longer has to out-stack the bottom nav, and
+          drag-to-dismiss, escape, focus trapping and scroll locking come from
+          the primitive instead of being approximated. */}
+      <Drawer
+        open={!!selected}
+        onOpenChange={(open) => { if (!open) setSelected(null); }}
+        shouldScaleBackground={false}
+      >
+        <DrawerContent className="border-border bg-card">
+          {selected && (
+            <>
+              <DrawerHeader className="pb-2 text-left">
+                <DrawerTitle className="truncate font-syne text-lg font-bold">
+                  {selected.song.title}
+                </DrawerTitle>
+                <DrawerDescription className="truncate">{selected.song.artist}</DrawerDescription>
+              </DrawerHeader>
+
+              <div className="pb-safe-6 flex flex-col gap-1 px-4 pt-2">
+                <Button
+                  variant="ghost"
+                  onClick={async () => {
+                    const song = selected.song;
+                    setSelected(null);
+                    if (song.starred) await unstar(song.id, 'song');
+                    else await star(song.id, 'song');
+                  }}
+                  className="min-h-14 justify-start gap-4 px-4 text-base font-medium [&_svg]:size-5"
+                >
+                  <Star
+                    fill={selected.song.starred ? 'currentColor' : 'none'}
+                    className={selected.song.starred ? 'text-primary' : ''}
+                  />
+                  {selected.song.starred ? 'Remove star' : 'Star song'}
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    removeFromQueue(selected.index);
+                    setSelected(null);
+                  }}
+                  className="min-h-14 justify-start gap-4 px-4 text-base font-medium text-destructive [&_svg]:size-5"
+                >
+                  <Trash2 />
+                  Remove from queue
+                </Button>
               </div>
-              <button onClick={() => setSelectedSong(null)} className="p-2 bg-white/10 rounded-full text-white/70 hover:text-white">
-                <X size={20} />
-              </button>
-            </div>
-            
-            <div className="flex flex-col gap-2">
-              <button 
-                onClick={handleStarToggle}
-                className="w-full flex items-center gap-4 p-4 rounded-xl bg-white/5 hover:bg-white/10 active:scale-95 transition-all text-white font-medium"
-              >
-                <Star size={22} fill={selectedSong.song.starred ? "currentColor" : "none"} className={selectedSong.song.starred ? "text-primary" : ""} />
-                {selectedSong.song.starred ? "Remove Star" : "Star Song"}
-              </button>
-              
-              <button 
-                onClick={() => {
-                  removeFromQueue(selectedSong.index);
-                  setSelectedSong(null);
-                }}
-                className="w-full flex items-center gap-4 p-4 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500/20 active:scale-95 transition-all font-medium"
-              >
-                <Trash2 size={22} />
-                Remove from Queue
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+            </>
+          )}
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }
 
-function SortableSongRow({ song, index, onRemove, onPlay, onLongPress }: any) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: song.id });
-  
+interface SortableSongRowProps {
+  song: Song;
+  onRemove: () => void;
+  onPlay: () => void;
+  onLongPress: () => void;
+}
+
+const LONG_PRESS_MS = 500;
+
+function SortableSongRow({ song, onRemove, onPlay, onLongPress }: SortableSongRowProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: song.id });
+
   const touchStart = useRef({ x: 0, y: 0 });
   const touchTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   /* A stationary touch still produces a click on release, so a long press used
@@ -160,46 +202,46 @@ function SortableSongRow({ song, index, onRemove, onPlay, onLongPress }: any) {
     touchTimeout.current = setTimeout(() => {
       longPressFired.current = true;
       onLongPress();
-      // Vibrate if supported to provide haptic feedback for long press
-      if (window.navigator && window.navigator.vibrate) {
-        window.navigator.vibrate(50);
-      }
-    }, 500);
+      if (typeof window.navigator?.vibrate === 'function') window.navigator.vibrate(50);
+    }, LONG_PRESS_MS);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
     const dx = Math.abs(e.touches[0].clientX - touchStart.current.x);
     const dy = Math.abs(e.touches[0].clientY - touchStart.current.y);
-    if (dx > 10 || dy > 10) {
-      clearTimeout(touchTimeout.current);
-    }
+    if (dx > 10 || dy > 10) clearTimeout(touchTimeout.current);
   };
 
-  const handleTouchEnd = () => {
-    clearTimeout(touchTimeout.current);
-  };
+  const handleTouchEnd = () => clearTimeout(touchTimeout.current);
 
-  useEffect(() => {
-    return () => clearTimeout(touchTimeout.current);
-  }, []);
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    zIndex: isDragging ? 10 : 1,
-    opacity: isDragging ? 0.8 : 1,
-  };
+  useEffect(() => () => clearTimeout(touchTimeout.current), []);
 
   return (
-    <div 
-      ref={setNodeRef} 
-      style={style} 
-      className="relative group touch-manipulation"
+    <li
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={cn(
+        'group relative flex items-center rounded-md bg-background',
+        isDragging ? 'z-10 opacity-80 shadow-lg' : 'z-0'
+      )}
     >
-      <div
+      {/* The drag listeners live on this handle alone. Spread across the whole
+          row they fought the page's own scrolling: any vertical touch past 5px
+          either began a drag or got cancelled by the browser taking over, so on
+          a phone reordering barely worked and scrolling felt sticky. A handle
+          with touch-action:none keeps one gesture per region. */}
+      <button
+        type="button"
         {...attributes}
         {...listeners}
-        className="cursor-grab active:cursor-grabbing"
+        aria-label={`Reorder ${song.title}`}
+        className="flex h-11 w-8 shrink-0 cursor-grab touch-none items-center justify-center rounded-md text-muted-foreground transition-colors active:cursor-grabbing hover:text-foreground"
+      >
+        <GripVertical size={16} aria-hidden="true" />
+      </button>
+
+      <div
+        className="min-w-0 flex-1"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -215,12 +257,18 @@ function SortableSongRow({ song, index, onRemove, onPlay, onLongPress }: any) {
       >
         <SongRow song={song} onPlay={onPlay} />
       </div>
-      <button 
+
+      {/* Desktop only: touch gets the same action from the long-press sheet.
+          Previously this was absolutely positioned at right-4, directly on top
+          of the row's own details button. */}
+      <button
+        type="button"
         onClick={(e) => { e.stopPropagation(); onRemove(); }}
-        className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity bg-background rounded-full shadow-sm hidden md:block"
+        aria-label={`Remove ${song.title} from queue`}
+        className="mr-1 hidden h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground opacity-0 transition-opacity hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100 md:flex"
       >
-        <Trash2 size={16} />
+        <Trash2 size={16} aria-hidden="true" />
       </button>
-    </div>
+    </li>
   );
 }

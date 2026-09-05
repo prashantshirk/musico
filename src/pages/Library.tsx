@@ -10,6 +10,7 @@ import { useVirtual } from 'react-virtual';
 import { Link } from 'wouter';
 import { ChevronLeft, Music2 } from 'lucide-react';
 import { coverArtUrl } from '../api/client';
+import { Skeleton } from '../components/ui/skeleton';
 
 type Tab = 'songs' | 'albums' | 'artists' | 'playlists' | 'genres';
 
@@ -26,27 +27,47 @@ export default function Library() {
 
   return (
     <div className="min-h-screen bg-background pb-32 animate-in fade-in duration-300">
-      <header className="pt-safe sticky top-0 bg-background/95 backdrop-blur-xl z-20 border-b border-border">
-        <h1 className="text-3xl font-syne font-bold text-foreground px-4 mt-4 mb-4">Library</h1>
-        <div className="flex overflow-x-auto hide-scrollbar px-4 pb-3 gap-6">
-          {tabs.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`text-sm font-semibold transition-colors whitespace-nowrap ${
-                activeTab === tab.id ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {tab.label}
-              {activeTab === tab.id && (
-                <div className="h-0.5 w-full bg-primary mt-1 rounded-t-full" />
-              )}
-            </button>
-          ))}
+      <header className="pt-safe sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur-xl">
+        <div className="px-4 pb-4 pt-5">
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+            Browse
+          </p>
+          <h1 className="mt-1 font-syne text-[2.1rem] font-bold leading-none tracking-[-0.03em] text-foreground">
+            Library
+          </h1>
+        </div>
+        {/* Pills of a fixed height. The old tabs were a bare line of text with an
+            underline rendered *only* on the active one, so every tab change
+            altered the row's height and nudged the content below it — and a 20px
+            line of text is not a target. */}
+        <div
+          role="tablist"
+          aria-label="Library sections"
+          className="hide-scrollbar flex gap-2 overflow-x-auto px-4 pb-3"
+        >
+          {tabs.map(tab => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => setActiveTab(tab.id)}
+                className={`hover-elevate active-elevate-2 flex h-10 shrink-0 items-center rounded-full px-4 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] transition-colors ${
+                  isActive
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-secondary text-muted-foreground'
+                }`}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
       </header>
 
-      <main className="p-4">
+      <main className="p-4" role="tabpanel">
         {activeTab === 'artists' && <ArtistsTab />}
         {activeTab === 'albums' && <AlbumsTab />}
         {activeTab === 'songs' && <SongsTab />}
@@ -127,7 +148,7 @@ function ArtistsTab() {
                 }
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
                   {group.artist?.map((artist: any) => (
-                    <ArtistCard key={artist.id} artist={artist} />
+                    <ArtistCard key={artist.id} artist={artist} className="w-full" />
                   ))}
                 </div>
               </div>
@@ -185,7 +206,7 @@ function AlbumsTab() {
             >
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 h-full">
                 {rowAlbums.map((album: any) => (
-                  <AlbumCard key={album.id} album={album} />
+                  <AlbumCard key={album.id} album={album} className="w-full" />
                 ))}
               </div>
             </div>
@@ -217,7 +238,7 @@ function SongsTab() {
   if (isLoading) return (
     <div className="space-y-2">
       {Array.from({ length: 12 }).map((_, i) => (
-        <div key={i} className="h-14 bg-muted rounded-md animate-pulse" />
+        <Skeleton key={i} className="h-14" />
       ))}
     </div>
   );
@@ -263,7 +284,7 @@ function PlaylistsTab() {
   if (isLoading) return (
     <div className="space-y-2">
       {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className="h-16 bg-muted rounded-md animate-pulse" />
+        <Skeleton key={i} className="h-16" />
       ))}
     </div>
   );
@@ -273,7 +294,7 @@ function PlaylistsTab() {
     <div className="flex flex-col gap-1">
       {data.map((playlist: any) => (
         <Link key={playlist.id} href={`/playlist/${playlist.id}`}>
-          <div className="flex items-center gap-4 p-3 hover:bg-white/5 rounded-md cursor-pointer transition-colors">
+          <div className="hover-elevate active-elevate-2 flex cursor-pointer items-center gap-4 rounded-md p-3">
             {playlist.coverArt ? (
               <img
                 src={coverArtUrl(playlist.id, 128)}
@@ -316,7 +337,7 @@ function GenresTab() {
   if (loadingGenres) return (
     <div className="grid grid-cols-2 gap-3">
       {Array.from({ length: 10 }).map((_, i) => (
-        <div key={i} className="h-20 bg-muted rounded-md animate-pulse" />
+        <Skeleton key={i} className="h-20 rounded-xl" />
       ))}
     </div>
   );
@@ -325,17 +346,18 @@ function GenresTab() {
     return (
       <div>
         <button
+          type="button"
           onClick={() => setSelectedGenre(null)}
-          className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4 transition-colors"
+          className="-ml-2 mb-4 flex min-h-11 items-center gap-2 rounded-md px-2 text-muted-foreground transition-colors hover:text-foreground active:text-foreground"
         >
-          <ChevronLeft size={20} />
+          <ChevronLeft size={20} aria-hidden="true" />
           <span className="font-semibold">{selectedGenre}</span>
         </button>
 
         {loadingSongs ? (
           <div className="space-y-2">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="h-14 bg-muted rounded-md animate-pulse" />
+              <Skeleton key={i} className="h-14" />
             ))}
           </div>
         ) : genreSongs?.length ? (
@@ -362,11 +384,14 @@ function GenresTab() {
       {genres.map((genre: any) => (
         <button
           key={genre.value}
+          type="button"
           onClick={() => setSelectedGenre(genre.value)}
-          className="bg-card p-5 rounded-xl border border-border hover:bg-accent cursor-pointer transition-all hover:scale-[1.02] text-left active:scale-[0.98]"
+          /* In a grid, `hover:scale-[1.02]` on one tile overlaps its neighbours
+             and `active:scale-[0.98]` makes the whole row look unstable. */
+          className="hover-elevate active-elevate-2 rounded-xl border border-border bg-card p-5 text-left"
         >
-          <p className="font-syne font-bold text-base truncate">{genre.value}</p>
-          <p className="text-xs text-muted-foreground mt-1">{genre.songCount} songs</p>
+          <p className="truncate font-syne text-base font-bold">{genre.value}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{genre.songCount} songs</p>
         </button>
       ))}
     </div>
@@ -385,11 +410,11 @@ function EmptyState({ message }: { message: string }) {
 function LoadingGrid({ type }: { type: 'artist' | 'album' }) {
   const isArtist = type === 'artist';
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
       {Array.from({ length: 10 }).map((_, i) => (
-        <div key={i} className="flex flex-col gap-2 animate-pulse w-full">
-          <div className={`aspect-square w-full bg-muted ${isArtist ? 'rounded-full' : 'rounded-md'}`} />
-          <div className={`h-4 bg-muted rounded w-3/4 ${isArtist ? 'mx-auto' : ''}`} />
+        <div key={i} className="flex w-full flex-col gap-2">
+          <Skeleton className={`aspect-square w-full ${isArtist ? 'rounded-full' : 'rounded-xl'}`} />
+          <Skeleton className={`h-4 w-3/4 ${isArtist ? 'mx-auto' : ''}`} />
         </div>
       ))}
     </div>

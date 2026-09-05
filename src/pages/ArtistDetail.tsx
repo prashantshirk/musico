@@ -7,6 +7,7 @@ import { SongRow } from '../components/SongRow';
 import { ArrowLeft } from 'lucide-react';
 import { ArtistCard } from '../components/ArtistCard';
 import { usePlayer } from '../hooks/usePlayer';
+import { Skeleton } from '../components/ui/skeleton';
 
 export default function ArtistDetail() {
   const [, params] = useRoute('/artist/:id');
@@ -33,27 +34,29 @@ export default function ArtistDetail() {
 
   if (isLoading) return (
     <div className="min-h-screen bg-background pb-32">
-      <div className="relative h-64 md:h-80 w-full bg-muted overflow-hidden animate-pulse">
+      <div className="relative h-64 w-full overflow-hidden bg-muted md:h-80">
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
         <div className="absolute bottom-6 left-6 md:left-12">
-          <div className="h-12 w-64 bg-white/10 rounded mb-2" />
-          <div className="h-4 w-24 bg-white/10 rounded" />
+          <Skeleton className="mb-2 h-12 w-64" />
+          <Skeleton className="h-4 w-24" />
         </div>
       </div>
-      <main className="p-4 md:p-8 max-w-screen-xl mx-auto flex flex-col gap-12">
+      <main className="mx-auto flex max-w-screen-xl flex-col gap-12 p-4 md:p-8">
         <section>
-          <div className="h-8 w-32 bg-white/5 rounded mb-4 animate-pulse" />
+          <Skeleton className="mb-4 h-8 w-32" />
           <div className="flex flex-col gap-2">
-            {[1, 2, 3, 4, 5].map(i => (
-              <div key={i} className="h-16 w-full bg-white/5 rounded-md animate-pulse" />
+            {['86%', '74%', '92%', '68%', '80%'].map((w, i) => (
+              <div key={i} className="flex h-16 items-center">
+                <Skeleton className="h-4 flex-none" style={{ width: w }} />
+              </div>
             ))}
           </div>
         </section>
         <section>
-          <div className="h-8 w-32 bg-white/5 rounded mb-4 animate-pulse" />
+          <Skeleton className="mb-4 h-8 w-32" />
           <div className="flex gap-4">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="w-40 h-56 bg-white/5 rounded-lg animate-pulse shrink-0" />
+            {[0, 1, 2].map(i => (
+              <Skeleton key={i} className="h-56 w-40 shrink-0 rounded-lg" />
             ))}
           </div>
         </section>
@@ -65,11 +68,15 @@ export default function ArtistDetail() {
   return (
     <div className="min-h-screen bg-background pb-32 animate-in fade-in duration-300">
       <div className="relative h-64 md:h-80 w-full bg-muted overflow-hidden">
-        <button 
+        {/* This one keeps the black scrim: it sits at the top of the hero where
+            the gradient is transparent, so it really is on top of the photo. */}
+        <button
+          type="button"
           onClick={() => window.history.back()}
-          className="absolute top-safe mt-4 left-4 p-2 bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-full text-white z-20 transition-colors"
+          aria-label="Back"
+          className="absolute top-safe left-2 z-20 mt-4 flex h-11 w-11 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-md transition-colors active:bg-black/60"
         >
-          <ArrowLeft size={24} />
+          <ArrowLeft size={24} aria-hidden="true" />
         </button>
         
         {artistInfo?.largeImageUrl || artist.id ? (
@@ -82,11 +89,14 @@ export default function ArtistDetail() {
         
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
         
+        {/* The name sits in the bottom of the hero, where that gradient has
+            already resolved to the page background — so it follows the theme
+            rather than being permanently white. */}
         <div className="absolute bottom-6 left-6 md:left-12">
-          <h1 className="text-5xl md:text-7xl font-syne font-bold text-white drop-shadow-lg">
+          <h1 className="font-syne text-5xl font-bold leading-[0.95] tracking-[-0.03em] text-foreground md:text-7xl">
             {artist.name}
           </h1>
-          <p className="text-white/80 mt-2 font-medium">
+          <p className="mt-2 font-medium text-muted-foreground">
             {artist.albumCount} albums
           </p>
         </div>

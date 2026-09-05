@@ -12,6 +12,10 @@ import { CoverArt } from './CoverArt';
  * it is already blurred, and two stacked backdrop-filters is the expensive
  * case, so this one is solid — which also stops scrolling artwork from showing
  * through and muddying the text.
+ *
+ * Surfaces are semantic tokens rather than the hex values this used to hardcode,
+ * so the bar follows the theme toggle on the home screen instead of staying dark
+ * underneath a light app.
  */
 export function MiniPlayer() {
   const [, setLocation] = useLocation();
@@ -58,47 +62,54 @@ export function MiniPlayer() {
         if (e.target !== e.currentTarget) return;
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
       }}
-      className="fixed left-2 right-2 z-40 flex h-14 cursor-pointer select-none items-center overflow-hidden rounded-[14px] bg-[#141416] pl-2 pr-1.5 transition-colors active:bg-[#1b1b1e]"
+      className="fixed left-2 right-2 z-40 flex h-14 cursor-pointer select-none items-center overflow-hidden rounded-[14px] bg-card pl-2 pr-1.5 ring-1 ring-border transition-colors active:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       style={{
         bottom: 'calc(4rem + env(safe-area-inset-bottom, 0px) + 0.5rem)',
-        boxShadow:
-          'inset 0 1px 0 rgba(255,255,255,0.06), 0 0 0 1px rgba(255,255,255,0.07), 0 12px 28px -8px rgba(0,0,0,0.7)',
+        /* A plain drop shadow, not the white inset highlight this used to carry —
+           that highlight only made sense against a permanently dark surface. */
+        boxShadow: '0 12px 28px -8px rgba(0, 0, 0, 0.45)',
       }}
     >
       <CoverArt
         id={artId || ''}
         alt={currentSong.album || ''}
         size={PLAYER_ART_SIZE}
-        className="h-10 w-10 shrink-0 rounded-lg shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]"
+        className="h-10 w-10 shrink-0 rounded-lg bg-muted ring-1 ring-border"
       />
 
       <div className="ml-3 min-w-0 flex-1">
-        <p className="truncate text-[13.5px] font-medium leading-tight text-white">
+        <p className="truncate text-[13.5px] font-medium leading-tight text-foreground">
           {currentSong.title}
         </p>
-        <p className="truncate text-[11.5px] leading-tight text-white/55">
+        <p className="truncate text-[11.5px] leading-tight text-muted-foreground">
           {currentSong.artist}
         </p>
       </div>
 
+      {/* Press feedback is colour, not scale: a transform here nudged the text
+          beside it and made the whole capsule feel loose. */}
       <button
+        type="button"
         onClick={(e) => { e.stopPropagation(); togglePlay(); }}
         aria-label={isPlaying ? 'Pause' : 'Play'}
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white transition-transform active:scale-90"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-foreground transition-colors active:text-foreground/50"
       >
-        {isPlaying ? <Pause size={19} fill="currentColor" /> : <Play size={19} fill="currentColor" />}
+        {isPlaying
+          ? <Pause size={20} fill="currentColor" aria-hidden="true" />
+          : <Play size={20} fill="currentColor" aria-hidden="true" />}
       </button>
       <button
+        type="button"
         onClick={(e) => { e.stopPropagation(); next(); }}
         aria-label="Next track"
-        className="flex h-11 w-10 shrink-0 items-center justify-center rounded-full text-white/60 transition-transform active:scale-90"
+        className="flex h-11 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors active:text-foreground"
       >
-        <SkipForward size={17} fill="currentColor" />
+        <SkipForward size={20} fill="currentColor" aria-hidden="true" />
       </button>
 
       {/* The capsule's bottom edge is the progress readout — no separate row of
           chrome for it. Clipped by the container's radius at both ends. */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[2px] bg-white/[0.07]">
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[2px] bg-foreground/10">
         <div
           ref={traceRef}
           className="h-full w-full origin-left"

@@ -1,10 +1,12 @@
+import { useState } from 'react';
 import { Song } from '../types';
 import { CoverArt } from './CoverArt';
 import { formatTime } from '../utils/time';
 import { Star, MoreVertical } from 'lucide-react';
 import { usePlayerStore } from '../store/playerStore';
-import { useState } from 'react';
+import { useSongMenuStore } from '../store/songMenuStore';
 import { star, unstar } from '../api/annotation';
+import { cn } from '../lib/utils';
 
 interface SongRowProps {
   song: Song;
@@ -19,8 +21,8 @@ export function SongRow({ song, index, onPlay, showCover = true }: SongRowProps)
   // progress tick instead of just the row that actually changed.
   const isCurrent = usePlayerStore(state => state.currentSong?.id === song.id);
   const isPlaying = usePlayerStore(state => state.isPlaying);
+  const openSongMenu = useSongMenuStore(state => state.openSongMenu);
   const [isStarred, setIsStarred] = useState(!!song.starred);
-  const [showInfo, setShowInfo] = useState(false);
 
   const handleStar = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -35,7 +37,10 @@ export function SongRow({ song, index, onPlay, showCover = true }: SongRowProps)
 
   return (
     <div
-      className="flex items-center gap-3 p-2 hover:bg-white/5 active:bg-white/10 rounded-md cursor-pointer group select-none transition-colors"
+      /* hover-elevate/active-elevate-2 are this project's own interaction
+         overlays; they tint via ::after, so the press state never moves the row
+         and it reads correctly in both themes. */
+      className="hover-elevate active-elevate-2 group flex cursor-pointer select-none items-center gap-3 rounded-md p-2"
       onClick={onPlay}
       role="button"
       tabIndex={0}
@@ -46,35 +51,31 @@ export function SongRow({ song, index, onPlay, showCover = true }: SongRowProps)
       {index !== undefined && !showCover && (
         <div className="w-6 text-center text-sm text-muted-foreground">
           {isCurrent && isPlaying ? (
-            <div className="flex items-end justify-center gap-0.5 h-4">
+            <div className="flex h-4 items-end justify-center gap-0.5" aria-label="Now playing">
               <div className="w-1 bg-primary animate-[pulse-bars_1s_ease-in-out_infinite]" />
               <div className="w-1 bg-primary animate-[pulse-bars_1s_ease-in-out_0.2s_infinite]" />
               <div className="w-1 bg-primary animate-[pulse-bars_1s_ease-in-out_0.4s_infinite]" />
             </div>
           ) : (
-            <span className={isCurrent ? "text-primary" : ""}>{index + 1}</span>
+            <span className={isCurrent ? 'text-primary' : ''}>{index + 1}</span>
           )}
         </div>
       )}
 
       {showCover && (
-        <div className="w-12 h-12 rounded overflow-hidden bg-muted flex-shrink-0">
-          <CoverArt
-            id={song.albumId || song.id}
-            alt={song.album || ''}
-            size={80}
-            className="w-full h-full"
-          />
-        </div>
+        <CoverArt
+          id={song.albumId || song.id}
+          alt={song.album || ''}
+          size={80}
+          className="h-12 w-12 shrink-0 rounded bg-muted"
+        />
       )}
 
-      <div className="flex-1 min-w-0">
-        <p className={`text-base font-medium truncate ${isCurrent ? 'text-primary' : 'text-foreground'}`}>
+      <div className="min-w-0 flex-1">
+        <p className={cn('truncate text-base font-medium', isCurrent ? 'text-primary' : 'text-foreground')}>
           {song.title}
         </p>
-        <p className="text-sm text-muted-foreground truncate">
-          {song.artist}
-        </p>
+        <p className="truncate text-sm text-muted-foreground">{song.artist}</p>
       </div>
 
       <div className="flex items-center gap-1">
@@ -83,79 +84,34 @@ export function SongRow({ song, index, onPlay, showCover = true }: SongRowProps)
             right ~80px of the row — which is most of "touch doesn't work". Now
             they are dim but present, and sized to the 44px minimum target. */}
         <button
+          type="button"
           onClick={handleStar}
           aria-label={isStarred ? `Unstar ${song.title}` : `Star ${song.title}`}
-          className={`flex h-11 w-11 items-center justify-center rounded-full transition-colors ${
-            isStarred ? 'text-primary' : 'text-muted-foreground/60 hover:text-foreground active:text-foreground'
-          }`}
+          aria-pressed={isStarred}
+          className={cn(
+            'flex h-11 w-11 items-center justify-center rounded-full transition-colors',
+            isStarred ? 'text-primary' : 'text-muted-foreground hover:text-foreground active:text-foreground'
+          )}
         >
-          <Star size={18} fill={isStarred ? 'currentColor' : 'none'} />
+          <Star size={20} fill={isStarred ? 'currentColor' : 'none'} aria-hidden="true" />
         </button>
-        <div className="text-sm text-muted-foreground min-w-[4ch] text-right font-mono tabular-nums">
+        <span className="min-w-[4ch] text-right font-mono text-sm tabular-nums text-muted-foreground">
           {formatTime(song.duration)}
-        </div>
+        </span>
         <button
-          onClick={(e) => { e.stopPropagation(); setShowInfo(true); }}
-          aria-label={`Details for ${song.title}`}
-          className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground/60 hover:text-foreground active:text-foreground transition-colors"
+          type="button"
+          /* Also stops the pointer stream, not just the click: this row is a
+             role="button" that starts playback, and on a phone a tap that ends
+             on the glyph would otherwise reach both handlers. */
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => { e.stopPropagation(); openSongMenu(song); }}
+          aria-label={`More options for ${song.title}`}
+          aria-haspopup="menu"
+          className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground active:text-foreground"
         >
-          <MoreVertical size={18} />
+          <MoreVertical size={20} aria-hidden="true" />
         </button>
       </div>
-
-      {showInfo && (
-        <div
-          className="fixed inset-0 z-[60] bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 cursor-default animate-in fade-in duration-200"
-          onClick={(e) => { e.stopPropagation(); setShowInfo(false); }}
-        >
-          <div 
-            className="bg-card border border-border w-full max-w-sm rounded-xl shadow-2xl p-6 flex flex-col gap-4 animate-in zoom-in-95 duration-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start gap-4">
-              <div className="w-24 h-24 rounded-md overflow-hidden shadow-md flex-shrink-0">
-                <CoverArt
-                  id={song.albumId || song.id}
-                  alt={song.album || ''}
-                  size={200}
-                  className="w-full h-full"
-                />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-syne font-bold text-xl text-foreground mb-1">{song.title}</h3>
-                <p className="text-primary font-medium text-sm">{song.artist}</p>
-                <p className="text-muted-foreground text-sm truncate">{song.album}</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 mt-2">
-              <div className="bg-white/5 rounded-lg p-3">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Duration</p>
-                <p className="font-mono text-sm">{formatTime(song.duration)}</p>
-              </div>
-              {song.year && (
-                <div className="bg-white/5 rounded-lg p-3">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Year</p>
-                  <p className="text-sm">{song.year}</p>
-                </div>
-              )}
-              {song.genre && (
-                <div className="bg-white/5 rounded-lg p-3 col-span-2">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Genre</p>
-                  <p className="text-sm">{song.genre}</p>
-                </div>
-              )}
-            </div>
-
-            <button 
-              onClick={(e) => { e.stopPropagation(); setShowInfo(false); }}
-              className="mt-2 w-full py-2.5 bg-primary text-primary-foreground font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

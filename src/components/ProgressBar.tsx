@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
+import * as SliderPrimitive from '@radix-ui/react-slider';
 import { usePlayerStore } from '../store/playerStore';
 import { formatTime } from '../utils/time';
 import { withAlpha } from '../utils/color';
+import { cn } from '../lib/utils';
 
 interface ProgressBarProps {
   onSeek: (seconds: number) => void;
@@ -13,108 +15,74 @@ interface ProgressBarProps {
  * Owns the scrubber and its two timecodes. It subscribes to progress itself so
  * that the four-times-a-second tick re-renders this leaf only, instead of the
  * whole player screen.
+ *
+ * Built on Radix Slider rather than hand-rolled pointer math: it brings pointer
+ * capture, touch handling, keyboard stepping (arrows / Home / End / PageUp) and
+ * the full range ARIA contract, none of which the previous bespoke version got
+ * entirely right.
  */
 export function ProgressBar({ onSeek, accent }: ProgressBarProps) {
   const progress = usePlayerStore(state => state.progress);
   const duration = usePlayerStore(state => state.duration);
 
-  const barRef = useRef<HTMLDivElement>(null);
-  const durationRef = useRef(duration);
-  durationRef.current = duration;
-
+  /* While the thumb is held, the store keeps ticking underneath us — so the
+   * dragged value has to live here and win, or the handle fights the playhead. */
   const [dragSeconds, setDragSeconds] = useState<number | null>(null);
   const isDragging = dragSeconds !== null;
 
-  const shown = dragSeconds ?? progress;
-  const percent = duration > 0 ? Math.min(100, Math.max(0, (shown / duration) * 100)) : 0;
+  const seekable = duration > 0;
+  const shown = Math.min(dragSeconds ?? progress, duration);
   const remaining = Math.max(0, duration - shown);
-
-  const secondsAt = (clientX: number) => {
-    const node = barRef.current;
-    if (!node) return 0;
-    const rect = node.getBoundingClientRect();
-    const ratio = rect.width > 0 ? (clientX - rect.left) / rect.width : 0;
-    return Math.min(1, Math.max(0, ratio)) * durationRef.current;
-  };
-
-  useEffect(() => {
-    if (!isDragging) return;
-
-    const move = (e: PointerEvent) => setDragSeconds(secondsAt(e.clientX));
-    const finish = (e: PointerEvent) => {
-      const target = secondsAt(e.clientX);
-      setDragSeconds(null);
-      if (durationRef.current > 0) onSeek(target);
-    };
-    // A cancelled pointer means the browser took the gesture away (scroll
-    // takeover, incoming call). Abandon the drag rather than seeking somewhere
-    // the listener never actually released.
-    const abandon = () => setDragSeconds(null);
-
-    document.addEventListener('pointermove', move);
-    document.addEventListener('pointerup', finish);
-    document.addEventListener('pointercancel', abandon);
-    return () => {
-      document.removeEventListener('pointermove', move);
-      document.removeEventListener('pointerup', finish);
-      document.removeEventListener('pointercancel', abandon);
-    };
-  }, [isDragging, onSeek]);
-
-  const nudge = (delta: number) => {
-    if (duration <= 0) return;
-    onSeek(Math.min(duration, Math.max(0, progress + delta)));
-  };
 
   return (
     <div>
-      <div
-        ref={barRef}
-        role="slider"
-        tabIndex={0}
+      <SliderPrimitive.Root
+        value={[shown]}
+        max={seekable ? duration : 1}
+        step={1}
+        disabled={!seekable}
         aria-label="Seek"
-        aria-valuemin={0}
-        aria-valuemax={Math.round(duration)}
-        aria-valuenow={Math.round(shown)}
-        aria-valuetext={`${formatTime(shown)} of ${formatTime(duration)}`}
-        onPointerDown={(e) => {
-          e.stopPropagation();
-          setDragSeconds(secondsAt(e.clientX));
+        onValueChange={([next]) => setDragSeconds(next)}
+        onValueCommit={([next]) => {
+          setDragSeconds(null);
+          if (seekable) onSeek(next);
         }}
-        onKeyDown={(e) => {
-          if (e.key === 'ArrowRight') { e.preventDefault(); nudge(5); }
-          else if (e.key === 'ArrowLeft') { e.preventDefault(); nudge(-5); }
-          else if (e.key === 'Home') { e.preventDefault(); onSeek(0); }
-        }}
-        className="flex h-11 w-full cursor-pointer touch-none items-center outline-none"
+        /* The player screen listens for drags to dismiss itself; without this
+           a scrub would also start pulling the whole sheet down. */
+        onPointerDown={(e) => e.stopPropagation()}
+        className="relative flex h-11 w-full touch-none select-none items-center data-[disabled]:opacity-50"
       >
-        <div className="relative w-full">
-          <div
-            className="w-full rounded-full bg-white/[0.14] transition-[height] duration-150"
-            style={{ height: isDragging ? 5 : 3 }}
-          />
-          <div
-            className="absolute top-0 rounded-full transition-[height] duration-150"
-            style={{
-              height: isDragging ? 5 : 3,
-              width: `${percent}%`,
-              backgroundColor: accent,
-            }}
-          />
-          {isDragging && (
-            <div
-              className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white"
-              style={{ left: `${percent}%`, boxShadow: `0 0 0 4px ${withAlpha(accent, 0.25)}` }}
-            />
+        <SliderPrimitive.Track
+          className={cn(
+            'relative w-full grow overflow-hidden rounded-full bg-foreground/15 transition-[height] duration-150',
+            isDragging ? 'h-[5px]' : 'h-[3px]'
           )}
-        </div>
-      </div>
+        >
+          <SliderPrimitive.Range
+            className="absolute h-full rounded-full"
+            style={{ backgroundColor: accent }}
+          />
+        </SliderPrimitive.Track>
+        <SliderPrimitive.Thumb
+          /* Hidden at rest so the bar reads as a hairline, but it stays in the
+             DOM so keyboard focus and the ARIA range never disappear. */
+          className={cn(
+            'block rounded-full bg-foreground transition-[width,height] duration-150',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+            isDragging ? 'h-3.5 w-3.5' : 'h-1 w-1 opacity-0 focus-visible:h-3.5 focus-visible:w-3.5 focus-visible:opacity-100'
+          )}
+          style={isDragging ? { boxShadow: `0 0 0 4px ${withAlpha(accent, 0.25)}` } : undefined}
+        />
+      </SliderPrimitive.Root>
 
       <div className="flex items-baseline justify-between font-mono text-[11px] tabular-nums tracking-[0.06em]">
-        <span style={{ color: isDragging ? accent : undefined }} className={isDragging ? '' : 'text-white/45'}>
+        <span
+          className={isDragging ? '' : 'text-muted-foreground'}
+          style={isDragging ? { color: accent } : undefined}
+        >
           {formatTime(shown)}
         </span>
-        <span className="text-white/35">-{formatTime(remaining)}</span>
+        <span className="text-muted-foreground">-{formatTime(remaining)}</span>
       </div>
     </div>
   );
