@@ -54,9 +54,10 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
 
 function AppShell() {
   const isLoggedIn = useAuthStore(state => state.isLoggedIn);
+  // Selector subscriptions only. This component wraps every route, so anything
+  // it subscribes to re-renders the entire tree — `progress` used to be read
+  // here, which meant the whole app re-rendered on every progress tick.
   const currentSong = usePlayerStore(state => state.currentSong);
-  const progress = usePlayerStore(state => state.progress);
-  const duration = usePlayerStore(state => state.duration);
   const [location, setLocation] = useLocation();
   const [hasHydrated, setHasHydrated] = useState(() => useAuthStore.persist.hasHydrated());
 
@@ -74,18 +75,13 @@ function AppShell() {
     }
   }, [location, isLoggedIn, setLocation, hasHydrated]);
 
-  // Global hooks
-  useAutoQueue();
-  useScrobble(currentSong?.id, progress, duration);
-  useMediaSession();
-
-  if (!hasHydrated) {
-    return <main className="min-h-screen bg-background" />;
-  }
-
   // Prefetch the Queue chunk (heaviest route: 17kB gz, contains dnd-kit) while the
   // browser is idle after the initial page load. Falls back to setTimeout on Safari
   // which doesn't implement requestIdleCallback.
+  //
+  // Must stay above the `hasHydrated` early return — declaring a hook after a
+  // conditional return changes the hook count between renders, which React treats
+  // as a fatal error the moment hydration flips.
   useEffect(() => {
     if (!isLoggedIn) return;
     const prefetch = () => { import('./pages/Queue'); };
@@ -97,6 +93,15 @@ function AppShell() {
       return () => clearTimeout(id);
     }
   }, [isLoggedIn]);
+
+  // Global hooks
+  useAutoQueue();
+  useScrobble();
+  useMediaSession();
+
+  if (!hasHydrated) {
+    return <main className="min-h-screen bg-background" />;
+  }
 
   const isNowPlaying = location === '/now-playing';
   const showChrome = isLoggedIn && !isNowPlaying;
@@ -120,7 +125,10 @@ function AppShell() {
 
       {showChrome && currentSong && <MiniPlayer />}
       {showChrome && <BottomNav />}
-      <InstallPrompt />
+      {/* Only over the browsing chrome. It was `fixed bottom-24 z-50` on every
+          route, so on the full-screen player it sat directly on top of the
+          transport controls and swallowed the taps. */}
+      {showChrome && <InstallPrompt />}
     </>
   );
 }

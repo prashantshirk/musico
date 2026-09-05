@@ -85,7 +85,14 @@ export function InstallPrompt() {
   if (!isVisible || !isLoggedIn) return null;
 
   return (
-    <div className="fixed bottom-24 left-4 right-4 z-50 animate-in slide-in-from-bottom-6 duration-500">
+    // Sits clear of both the bottom nav (4rem) and the mini player (3.5rem plus
+    // its own offset). At `bottom-24` it overlapped them, so the banner's
+    // backdrop covered the play button until it was dismissed. z-30 keeps it
+    // behind the player chrome rather than in front of it.
+    <div
+      className="fixed left-4 right-4 z-30 animate-in slide-in-from-bottom-6 duration-500"
+      style={{ bottom: 'calc(9rem + env(safe-area-inset-bottom, 0px))' }}
+    >
       <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-black/60 p-4 backdrop-blur-xl shadow-2xl">
         {/* Glow effect */}
         <div className="absolute -left-16 -top-16 -z-10 h-32 w-32 rounded-full bg-primary/20 blur-2xl" />

@@ -95,10 +95,12 @@ export default function Queue() {
         )}
       </main>
 
-      {/* Action Sheet Modal */}
+      {/* Action sheet. Sits above the bottom nav (z-50), which shares a stacking
+          level with it and, being later in the DOM, used to paint over the
+          sheet's last row and swallow its taps. */}
       {selectedSong && (
-        <div 
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end animate-in fade-in duration-200"
+        <div
+          className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-end animate-in fade-in duration-200"
           onClick={() => setSelectedSong(null)}
           onTouchStart={(e) => e.stopPropagation()}
         >
@@ -147,11 +149,16 @@ function SortableSongRow({ song, index, onRemove, onPlay, onLongPress }: any) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: song.id });
   
   const touchStart = useRef({ x: 0, y: 0 });
-  const touchTimeout = useRef<NodeJS.Timeout>();
+  const touchTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  /* A stationary touch still produces a click on release, so a long press used
+   * to open the action sheet AND skip to the track underneath it. */
+  const longPressFired = useRef(false);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    longPressFired.current = false;
     touchTimeout.current = setTimeout(() => {
+      longPressFired.current = true;
       onLongPress();
       // Vibrate if supported to provide haptic feedback for long press
       if (window.navigator && window.navigator.vibrate) {
@@ -189,14 +196,22 @@ function SortableSongRow({ song, index, onRemove, onPlay, onLongPress }: any) {
       style={style} 
       className="relative group touch-manipulation"
     >
-      <div 
-        {...attributes} 
-        {...listeners} 
+      <div
+        {...attributes}
+        {...listeners}
         className="cursor-grab active:cursor-grabbing"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onTouchCancel={handleTouchEnd}
+        /* Swallows the click the browser synthesises when the finger lifts after
+           a long press, so opening the sheet no longer also skips the queue. */
+        onClickCapture={(e) => {
+          if (!longPressFired.current) return;
+          longPressFired.current = false;
+          e.preventDefault();
+          e.stopPropagation();
+        }}
       >
         <SongRow song={song} onPlay={onPlay} />
       </div>

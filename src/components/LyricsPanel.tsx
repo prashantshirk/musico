@@ -50,15 +50,20 @@ export function LyricsPanel({ onClose }: LyricsPanelProps) {
   }, [activeIndex]);
 
   return (
-    <div 
-      className="absolute inset-0 bg-background/95 backdrop-blur-xl z-50 flex flex-col pt-12 pb-8 px-6 animate-in slide-in-from-bottom-full duration-300"
+    <div
+      className="absolute inset-0 bg-background/95 backdrop-blur-xl z-50 flex flex-col pb-8 px-6 animate-in slide-in-from-bottom-full duration-300"
+      style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 3rem)' }}
       onTouchStart={(e) => e.stopPropagation()}
       onTouchMove={(e) => e.stopPropagation()}
       onTouchEnd={(e) => e.stopPropagation()}
     >
-      <button 
+      {/* Absolutely positioned, so the container's padding doesn't apply — at a
+          flat top-4 this sat under the notch and was untappable. */}
+      <button
         onClick={onClose}
-        className="absolute top-4 right-4 p-2 text-foreground/60 hover:text-foreground bg-foreground/5 rounded-full"
+        aria-label="Close lyrics"
+        className="absolute right-4 flex h-11 w-11 items-center justify-center text-foreground/60 hover:text-foreground bg-foreground/5 rounded-full"
+        style={{ top: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)' }}
       >
         <X size={24} />
       </button>

@@ -14,8 +14,11 @@ interface SongRowProps {
 }
 
 export function SongRow({ song, index, onPlay, showCover = true }: SongRowProps) {
-  const { currentSong, isPlaying } = usePlayerStore();
-  const isCurrent = currentSong?.id === song.id;
+  // Boolean selectors, not the whole store. A library page renders hundreds of
+  // these; subscribing to the full store re-rendered every row on every
+  // progress tick instead of just the row that actually changed.
+  const isCurrent = usePlayerStore(state => state.currentSong?.id === song.id);
+  const isPlaying = usePlayerStore(state => state.isPlaying);
   const [isStarred, setIsStarred] = useState(!!song.starred);
   const [showInfo, setShowInfo] = useState(false);
 
@@ -31,9 +34,14 @@ export function SongRow({ song, index, onPlay, showCover = true }: SongRowProps)
   };
 
   return (
-    <div 
+    <div
       className="flex items-center gap-3 p-2 hover:bg-white/5 active:bg-white/10 rounded-md cursor-pointer group select-none transition-colors"
       onClick={onPlay}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPlay?.(); }
+      }}
     >
       {index !== undefined && !showCover && (
         <div className="w-6 text-center text-sm text-muted-foreground">
@@ -69,27 +77,35 @@ export function SongRow({ song, index, onPlay, showCover = true }: SongRowProps)
         </p>
       </div>
 
-      <div className="flex items-center gap-2">
-        <button 
+      <div className="flex items-center gap-1">
+        {/* These were `opacity-0 group-hover:opacity-100`. There is no hover on a
+            phone, so they stayed invisible while still absorbing every tap in the
+            right ~80px of the row — which is most of "touch doesn't work". Now
+            they are dim but present, and sized to the 44px minimum target. */}
+        <button
           onClick={handleStar}
-          className={`p-2 rounded-full ${isStarred ? 'text-primary' : 'text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100'} transition-all`}
+          aria-label={isStarred ? `Unstar ${song.title}` : `Star ${song.title}`}
+          className={`flex h-11 w-11 items-center justify-center rounded-full transition-colors ${
+            isStarred ? 'text-primary' : 'text-muted-foreground/60 hover:text-foreground active:text-foreground'
+          }`}
         >
-          <Star size={18} fill={isStarred ? "currentColor" : "none"} />
+          <Star size={18} fill={isStarred ? 'currentColor' : 'none'} />
         </button>
-        <div className="text-sm text-muted-foreground min-w-[3ch] text-right">
+        <div className="text-sm text-muted-foreground min-w-[4ch] text-right font-mono tabular-nums">
           {formatTime(song.duration)}
         </div>
-        <button 
+        <button
           onClick={(e) => { e.stopPropagation(); setShowInfo(true); }}
-          className="p-2 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+          aria-label={`Details for ${song.title}`}
+          className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground/60 hover:text-foreground active:text-foreground transition-colors"
         >
           <MoreVertical size={18} />
         </button>
       </div>
 
       {showInfo && (
-        <div 
-          className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 cursor-default animate-in fade-in duration-200"
+        <div
+          className="fixed inset-0 z-[60] bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 cursor-default animate-in fade-in duration-200"
           onClick={(e) => { e.stopPropagation(); setShowInfo(false); }}
         >
           <div 

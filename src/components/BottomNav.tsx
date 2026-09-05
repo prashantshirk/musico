@@ -17,8 +17,17 @@ export function BottomNav() {
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 h-16 bg-background/90 backdrop-blur-2xl border-t border-border z-50 pb-safe">
-      <div className="flex items-center justify-around h-full px-2">
+    /* The bar grows by the safe inset instead of padding inwards. With
+     * box-sizing: border-box, `h-16` plus `pb-safe` squeezed the icons into
+     * 64px minus a 34px home indicator on notched phones. */
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/90 backdrop-blur-xl"
+      style={{
+        height: 'calc(4rem + env(safe-area-inset-bottom, 0px))',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+      }}
+    >
+      <div className="flex h-full items-center justify-around px-2">
         {tabs.map(tab => {
           const isActive = location.startsWith(tab.path);
           const Icon = tab.icon;

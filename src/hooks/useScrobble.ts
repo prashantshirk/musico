@@ -1,35 +1,56 @@
 import { useEffect, useRef } from 'react';
 import { scrobble } from '../api/annotation';
+import { usePlayerStore } from '../store/playerStore';
 
-export function useScrobble(songId: string | undefined | null, progress: number, duration: number) {
+/**
+ * Submits a scrobble once per track, at the earlier of half the track length,
+ * 30 seconds of playback, or a 30 second wall-clock timer.
+ *
+ * This subscribes to the store imperatively rather than taking progress as a
+ * prop. It used to be called as `useScrobble(id, progress, duration)` from the
+ * app shell, which meant the shell had to subscribe to `progress` — so the whole
+ * component tree re-rendered on every progress tick purely to re-run a numeric
+ * comparison that changes nothing visible.
+ */
+export function useScrobble() {
   const scrobbled = useRef(false);
-  const scrobbleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    scrobbled.current = false;
-    if (scrobbleTimer.current) clearTimeout(scrobbleTimer.current);
+    let trackedId: string | null = null;
 
-    if (!songId) return;
+    const check = (state: ReturnType<typeof usePlayerStore.getState>) => {
+      const id = state.currentSong?.id ?? null;
 
-    scrobbleTimer.current = setTimeout(() => {
-      if (!scrobbled.current) {
-        scrobble(songId).catch(console.error);
-        scrobbled.current = true;
+      if (id !== trackedId) {
+        trackedId = id;
+        scrobbled.current = false;
+        if (timer.current) { clearTimeout(timer.current); timer.current = null; }
+        if (id) {
+          timer.current = setTimeout(() => {
+            if (!scrobbled.current && trackedId === id) {
+              scrobble(id).catch(console.error);
+              scrobbled.current = true;
+            }
+          }, 30000);
+        }
       }
-    }, 30000);
+
+      if (!id || scrobbled.current || state.duration <= 0) return;
+
+      if (state.progress >= Math.min(state.duration * 0.5, 30)) {
+        scrobble(id).catch(console.error);
+        scrobbled.current = true;
+        if (timer.current) { clearTimeout(timer.current); timer.current = null; }
+      }
+    };
+
+    check(usePlayerStore.getState());
+    const unsubscribe = usePlayerStore.subscribe(check);
 
     return () => {
-      if (scrobbleTimer.current) clearTimeout(scrobbleTimer.current);
+      unsubscribe();
+      if (timer.current) clearTimeout(timer.current);
     };
-  }, [songId]);
-
-  useEffect(() => {
-    if (!songId || scrobbled.current || duration <= 0) return;
-
-    if (progress >= Math.min(duration * 0.5, 30)) {
-      scrobble(songId).catch(console.error);
-      scrobbled.current = true;
-      if (scrobbleTimer.current) clearTimeout(scrobbleTimer.current);
-    }
-  }, [progress, duration, songId]);
+  }, []);
 }

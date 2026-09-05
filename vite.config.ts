@@ -38,31 +38,58 @@ export default defineConfig({
           // ── Cover Art: CacheFirst ──────────────────────────────────────────
           // Once an image is cached, serve it instantly without touching network.
           // 500 images max, expire after 30 days. Mobile-friendly.
+          //
+          // cacheKeyWillBeUsed strips the Subsonic auth params (t/s/u/c/v/f) from
+          // the key. Those change whenever a new salt is minted, and previously
+          // made every entry unreachable — the cache filled up and never hit.
+          // Keyed on id+size only, the same artwork resolves to one entry for good.
+          // NOTE: these functions are stringified into the generated service
+          // worker, so they must not reference anything in this module's scope.
           {
             urlPattern: /\/rest\/getCoverArt/,
             handler: 'CacheFirst',
             options: {
-              cacheName: 'cover-art-v1',
+              cacheName: 'cover-art-v2',
               expiration: {
                 maxEntries: 500,
                 maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
               },
               cacheableResponse: { statuses: [0, 200] },
+              plugins: [
+                {
+                  cacheKeyWillBeUsed: async ({ request }: { request: Request }) => {
+                    const url = new URL(request.url);
+                    for (const p of ['t', 's', 'u', 'p', 'c', 'v', 'f']) url.searchParams.delete(p);
+                    url.searchParams.sort();
+                    return url.href;
+                  },
+                },
+              ],
             },
           },
           // ── API Metadata: NetworkFirst with 4s timeout ─────────────────────
           // Try network first; fall back to cache if offline or slow.
           {
-            urlPattern: /\/rest\/(getAlbumList|getArtists|getArtist|getAlbum|getPlaylists|getPlaylist|getStarred|getGenres|getSongsByGenre|getRandomSongs|getSong|search3)/,
+            urlPattern: /\/rest\/(getAlbumList|getArtists|getArtist|getAlbum|getAlbumInfo|getArtistInfo|getPlaylists|getPlaylist|getStarred|getGenres|getSongsByGenre|getRandomSongs|getSong|getTopSongs|getLyrics|search3)/,
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'api-metadata-v1',
+              cacheName: 'api-metadata-v2',
               networkTimeoutSeconds: 4,
               expiration: {
                 maxEntries: 200,
                 maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days
               },
               cacheableResponse: { statuses: [0, 200] },
+              plugins: [
+                {
+                  cacheKeyWillBeUsed: async ({ request }: { request: Request }) => {
+                    const url = new URL(request.url);
+                    for (const p of ['t', 's', 'u', 'p', 'c', 'v', 'f']) url.searchParams.delete(p);
+                    url.searchParams.sort();
+                    return url.href;
+                  },
+                },
+              ],
             },
           },
           // ── Audio Streams: NetworkOnly ─────────────────────────────────────

@@ -196,6 +196,23 @@
  */
 @layer utilities {
 
+  /* ── Safe-area utilities ───────────────────────────────────────────────────
+   * These were used throughout the app (pt-safe / pb-safe / top-safe) but never
+   * defined, so they silently compiled to nothing. Tailwind v4 has no config
+   * file here, so they're declared by hand. Requires viewport-fit=cover in
+   * index.html, otherwise every inset reports 0px.
+   */
+  .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .pl-safe { padding-left: env(safe-area-inset-left, 0px); }
+  .pr-safe { padding-right: env(safe-area-inset-right, 0px); }
+  .top-safe { top: env(safe-area-inset-top, 0px); }
+  .bottom-safe { bottom: env(safe-area-inset-bottom, 0px); }
+  /* Additive variants — safe inset plus a fixed amount */
+  .pt-safe-4 { padding-top: calc(env(safe-area-inset-top, 0px) + 1rem); }
+  .pb-safe-4 { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem); }
+  .pb-safe-6 { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1.5rem); }
+
   /* Hide ugly search cancel button in Chrome until we can style it properly */
   input[type="search"]::-webkit-search-cancel-button {
     @apply hidden;
