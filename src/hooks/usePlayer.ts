@@ -7,8 +7,9 @@ import { toast } from './use-toast';
 import type { Song } from '../types';
 
 let currentHowl: Howl | null = null;
+let currentHowlSongId: string | null = null;
 let preloaderHowl: Howl | null = null;
-let preloadTimeout: ReturnType<typeof setTimeout> | null = null;
+let preloadedSongId: string | null = null;
 let progressTimer: ReturnType<typeof setInterval> | null = null;
 
 let lastSaveTime = 0;
@@ -29,10 +30,6 @@ const SAVE_INTERVAL_MS = 5000;
 /* 250ms x 24 = 6s of a "playing" Howl whose position has not advanced. */
 const STALL_TICKS_BEFORE_RECOVERY = 24;
 const MAX_STALL_RECOVERIES = 2;
-/* Preloading opens a second stream, and Navidrome transcodes it server-side, so
- * firing at 3s meant every quick skip spawned a throwaway transcode job. */
-const PRELOAD_DELAY_MS = 15000;
-
 /* Global gain is pinned at unity and per-Howl volume is the single source of
  * truth. setVolume() used to write the global while _playSong() wrote the
  * per-sound value, and Howler multiplies the two — so a slider at 0.5 actually
@@ -128,26 +125,27 @@ function startProgressTick(howl: Howl) {
   }, PROGRESS_INTERVAL_MS);
 }
 
-function schedulePreload() {
-  if (preloadTimeout) { clearTimeout(preloadTimeout); preloadTimeout = null; }
+function schedulePreload(activeSongId: string) {
+  const { queue, queueIndex, repeat, currentSong } = getStore();
+  if (currentSong?.id !== activeSongId || currentHowlSongId !== activeSongId) return;
 
-  preloadTimeout = setTimeout(() => {
-    const { queue, queueIndex, repeat } = getStore();
-    if (!currentHowl || !currentHowl.playing()) return;
+  let ni = queueIndex + 1;
+  if (ni >= queue.length && repeat === 'all') ni = 0;
+  const nextSong = ni < queue.length ? queue[ni] : undefined;
+  if (!nextSong || preloadedSongId === nextSong.id) return;
 
-    let ni = queueIndex + 1;
-    if (ni >= queue.length && repeat === 'all') ni = 0;
-    if (ni < queue.length && queue[ni]) {
-      if (preloaderHowl) { cleanupHowl(preloaderHowl); preloaderHowl = null; }
-      preloaderHowl = new Howl({
-        src: [streamUrl(queue[ni].id)],
-        format: ['mp3'],
-        html5: true,
-        volume: 0,
-        preload: true,
-      });
-    }
-  }, PRELOAD_DELAY_MS);
+  if (preloaderHowl) cleanupHowl(preloaderHowl);
+  preloadedSongId = nextSong.id;
+  preloaderHowl = new Howl({
+    src: [streamUrl(nextSong.id)],
+    format: ['mp3'],
+    html5: true,
+    volume: 0,
+    // Create the next native media element while the page is foregrounded, but
+    // fetch only metadata. This lets lock-screen playback hand off without
+    // downloading the complete track or needing a background timer to run.
+    preload: 'metadata',
+  });
 }
 
 /* The preloaded Howl becomes the live one. It needs the same event wiring as a
@@ -156,6 +154,7 @@ function schedulePreload() {
 function adoptPreloaded(promoted: Howl, song: Song) {
   if (currentHowl) { cleanupHowl(currentHowl); currentHowl = null; }
   currentHowl = promoted;
+  currentHowlSongId = song.id;
   promoted.volume(activeVolume());
 
   // If it finished loading before promotion the 'load' event has already fired,
@@ -175,7 +174,7 @@ function adoptPreloaded(promoted: Howl, song: Song) {
     retriedSongId = null;
     getStore().setPlaying(true);
     if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
-    schedulePreload();
+    schedulePreload(song.id);
     startProgressTick(promoted);
   });
   promoted.on('pause', () => {
@@ -183,13 +182,16 @@ function adoptPreloaded(promoted: Howl, song: Song) {
     if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
   });
   promoted.on('end', () => {
-    getStore().setPlaying(false);
-    handleSongEnd();
+    handleSongEnd(promoted, song);
   });
   promoted.on('loaderror', (_id: number, err: unknown) => handleLoadFailure(song, err));
   promoted.on('playerror', () => {
+    getStore().setPlaying(false);
+    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
     Howler.ctx?.resume().catch(() => {});
-    promoted.play();
+    promoted.once('unlock', () => {
+      if (currentHowl === promoted && getStore().currentSong?.id === song.id) promoted.play();
+    });
   });
 
   promoted.play();
@@ -223,13 +225,14 @@ function handleLoadFailure(song: Song, err: unknown) {
   });
 }
 
-function handleSongEnd() {
-  const { repeat, queue, queueIndex } = getStore();
-  const currentSong = queue[queueIndex];
+function handleSongEnd(endedHowl: Howl, endedSong: Song) {
+  // Ignore a late event from an unloaded/replaced audio element. Without this,
+  // one stale `end` event can advance the queue a second time when the screen
+  // wakes and the browser flushes deferred media events.
+  if (currentHowl !== endedHowl || currentHowlSongId !== endedSong.id) return;
 
-  if (currentSong) {
-    scrobble(currentSong.id, true); // Scrobble on finish
-  }
+  const { repeat, queue, queueIndex } = getStore();
+  scrobble(endedSong.id, true); // Scrobble on finish
 
   if (repeat === 'one') {
     currentHowl?.seek(0);
@@ -241,9 +244,10 @@ function handleSongEnd() {
 
   if (nextIndex < queue.length) {
     const nextSong = queue[nextIndex];
-    if (preloaderHowl && nextSong) {
+    if (preloaderHowl && nextSong && preloadedSongId === nextSong.id) {
       const promoted = preloaderHowl;
       preloaderHowl = null;
+      preloadedSongId = null;
       getStore().next();
       adoptPreloaded(promoted, nextSong);
       return;
@@ -251,13 +255,23 @@ function handleSongEnd() {
     getStore().next();
     if (nextSong) _playSong(nextSong, undefined, false, true);
   } else if (repeat === 'all' && queue.length > 0) {
+    const firstSong = queue[0];
+    if (preloaderHowl && firstSong && preloadedSongId === firstSong.id) {
+      const promoted = preloaderHowl;
+      preloaderHowl = null;
+      preloadedSongId = null;
+      getStore().next();
+      adoptPreloaded(promoted, firstSong);
+      return;
+    }
     getStore().next();
-    const firstSong = getStore().queue[0];
     if (firstSong) _playSong(firstSong, undefined, false, true);
   } else {
     stopProgressTick();
+    getStore().setPlaying(false);
     getStore().setProgress(0);
     getStore().setLoading(false);
+    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'none';
   }
 }
 
@@ -329,9 +343,8 @@ function _playSong(
   initialSeek?: number
 ) {
   stopProgressTick();
-  if (preloaderHowl) { cleanupHowl(preloaderHowl); preloaderHowl = null; }
-  if (preloadTimeout) { clearTimeout(preloadTimeout); preloadTimeout = null; }
-  if (currentHowl) { cleanupHowl(currentHowl); currentHowl = null; }
+  if (preloaderHowl) { cleanupHowl(preloaderHowl); preloaderHowl = null; preloadedSongId = null; }
+  if (currentHowl) { cleanupHowl(currentHowl); currentHowl = null; currentHowlSongId = null; }
 
   if (!skipStoreUpdate) {
     if (queue !== undefined) {
@@ -348,7 +361,9 @@ function _playSong(
     src: [streamUrl(song.id)],
     format: ['mp3'],
     html5: true,
-    preload: true,
+    // Stream as soon as the browser has enough data instead of treating the
+    // entire track as a buffer that must be fetched before playback starts.
+    preload: 'metadata',
     volume: activeVolume(),
     onload: () => {
       getStore().setDuration(howl.duration());
@@ -358,7 +373,7 @@ function _playSong(
       retriedSongId = null;
       getStore().setPlaying(true);
       if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
-      schedulePreload();
+      schedulePreload(song.id);
       startProgressTick(howl);
     },
     onpause: () => {
@@ -366,19 +381,26 @@ function _playSong(
       if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
     },
     onend: () => {
-      getStore().setPlaying(false);
-      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'none';
-      handleSongEnd();
+      // Keep the OS media session alive across the handoff. Marking it `none`
+      // here causes mobile browsers to suspend the newly started track while
+      // the screen is locked.
+      handleSongEnd(howl, song);
     },
     onloaderror: (_id: number, err: unknown) => handleLoadFailure(song, err),
     onplayerror: () => {
-      // Almost always a suspended AudioContext after backgrounding.
+      getStore().setPlaying(false);
+      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+      // Almost always a suspended AudioContext after backgrounding. Wait for a
+      // real unlock instead of retrying in a tight loop.
       Howler.ctx?.resume().catch(() => {});
-      howl.play();
+      howl.once('unlock', () => {
+        if (currentHowl === howl && getStore().currentSong?.id === song.id) howl.play();
+      });
     },
   });
 
   currentHowl = howl;
+  currentHowlSongId = song.id;
   if (initialSeek && initialSeek > 0) {
     howl.once('load', () => howl.seek(initialSeek));
   }
@@ -412,8 +434,11 @@ export function usePlayer() {
   }, []);
 
   const togglePlay = useCallback(() => {
-    if (!currentHowl || currentHowl.state() === 'unloaded') {
-      const state = getStore();
+    const state = getStore();
+    // The queue can advance while a locked browser delays the audio handoff.
+    // Always reconcile the audio object with the song shown in the UI before
+    // responding to Play, otherwise the ended object can advance the queue again.
+    if (!currentHowl || currentHowl.state() === 'unloaded' || currentHowlSongId !== state.currentSong?.id) {
       if (state.currentSong) {
         _playSong(state.currentSong, undefined, false, true, state.progress);
       }
@@ -435,7 +460,7 @@ export function usePlayer() {
     // Seeking resets the stall watchdog — the position legitimately jumped.
     lastSeenPosition = -1;
     stalledTicks = 0;
-    schedulePreload();
+    if (currentHowlSongId) schedulePreload(currentHowlSongId);
   }, []);
 
   const setVolume = useCallback((vol: number) => {
